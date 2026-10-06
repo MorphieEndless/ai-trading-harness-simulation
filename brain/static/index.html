@@ -1,0 +1,2220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>AI Trading Harness · HalluAct</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #090d16;
+  --panel: rgba(16, 22, 34, 0.85);
+  --panel-card: rgba(22, 30, 46, 0.7);
+  --panel-card-hover: rgba(28, 38, 58, 0.85);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-subtle: rgba(255, 255, 255, 0.04);
+  --line-strong: rgba(255, 255, 255, 0.16);
+
+  --fg: #f0f6fc;
+  --fg2: #9aa4b8;
+  --fg3: #616e85;
+
+  --accent: #58a6ff;
+  --accent-glow: rgba(88, 166, 255, 0.18);
+  --up: #3fb950;
+  --up-bg: rgba(63, 185, 80, 0.12);
+  --up-border: rgba(63, 185, 80, 0.3);
+  --down: #f43f5e;
+  --down-bg: rgba(244, 63, 94, 0.12);
+  --down-border: rgba(244, 63, 94, 0.3);
+  --warn: #e3b341;
+  --warn-bg: rgba(227, 179, 65, 0.12);
+  --violet: #bc8cff;
+  --violet-bg: rgba(188, 140, 255, 0.12);
+  --violet-border: rgba(188, 140, 255, 0.3);
+
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", system-ui, sans-serif;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13.5px/1.55 var(--sans);
+  overflow: hidden;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.22); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- 顶栏 ---------- */
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  background: rgba(11, 15, 25, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+  height: 54px;
+  flex: 0 0 54px;
+  z-index: 50;
+}
+.brand {
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: .3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fg3);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .04);
+  flex-shrink: 0;
+}
+.dot.on { background: var(--up); box-shadow: 0 0 10px var(--up); animation: pulse 2.2s infinite; }
+.dot.off { background: var(--warn); }
+.dot.err { background: var(--down); }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+
+.pill-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pill-group::-webkit-scrollbar { display: none; }
+
+.pill {
+  font: 500 11px/1.2 var(--mono);
+  padding: 4.5px 8px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  color: var(--fg2);
+  background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all .15s;
+}
+.pill.ok { color: var(--up); border-color: var(--up-border); background: var(--up-bg); }
+.pill.warn { color: var(--warn); border-color: rgba(227, 179, 65, 0.35); background: var(--warn-bg); }
+.pill.err { color: var(--down); border-color: var(--down-border); background: var(--down-bg); }
+
+.spacer { flex: 1; }
+
+.btn {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: 500 12.5px var(--sans);
+  transition: all .15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  user-select: none;
+  white-space: nowrap;
+}
+.btn:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--line-strong); }
+.btn:active { transform: scale(0.98); }
+.btn.primary { background: rgba(88, 166, 255, 0.18); border-color: rgba(88, 166, 255, 0.45); color: #c9e1ff; }
+.btn.primary:hover { background: rgba(88, 166, 255, 0.3); border-color: var(--accent); }
+.btn.sm { padding: 4px 8px; font-size: 11px; border-radius: 5px; }
+
+/* ---------- 桌面端三栏布局 ---------- */
+main {
+  display: grid;
+  grid-template-columns: 330px 1fr 340px;
+  height: calc(100% - 54px);
+  gap: 1px;
+  background: var(--line-subtle);
+  overflow: hidden;
+}
+.col {
+  background: var(--bg);
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}
+.col.center {
+  background: #060910;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 卡片 */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  transition: border-color .15s ease;
+}
+.card:hover { border-color: rgba(255, 255, 255, 0.13); }
+
+/* ---------------- 唤醒策略卡片 ---------------- */
+.wk-row { display:grid; grid-template-columns: 88px 1fr; gap:6px 10px; align-items:center;
+          font-size:11.5px; padding:3px 0; }
+.wk-row > label { color: var(--fg3); }
+.wk-row input[type=number] {
+  width: 68px; background: rgba(0,0,0,.28); border:1px solid var(--line);
+  border-radius: var(--radius-sm); color: var(--fg); padding:3px 6px;
+  font: 11.5px/1.3 var(--mono);
+}
+.wk-row input[type=checkbox] { accent-color: var(--accent); }
+.wk-actions { display:flex; gap:6px; margin-top:9px; align-items:center; }
+.wk-actions button {
+  background: rgba(88,166,255,.12); border:1px solid var(--line-strong);
+  color: var(--fg); border-radius: var(--radius-sm); padding:4px 10px;
+  font: 600 11px var(--sans); cursor:pointer;
+}
+.wk-actions button:hover { background: rgba(88,166,255,.22); }
+.wk-actions .hint { color: var(--fg3); font-size:10.5px; margin-left:auto; }
+.wk-rules { margin-top:8px; border-top:1px solid var(--line-subtle); padding-top:7px; }
+.wk-rule { display:flex; gap:6px; font: 11px/1.5 var(--mono); padding:1px 0; }
+.wk-rule .src { font-size:9.5px; padding:0 4px; border-radius:3px; line-height:15px; height:15px; }
+.wk-rule .src.human { background: var(--accent-glow); color: var(--accent); }
+.wk-rule .src.agent { background: var(--violet-bg); color: var(--violet); }
+.wk-stats { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;
+            border-top:1px solid var(--line-subtle); padding-top:7px; font-size:10.5px; }
+.wk-stats i { font-style:normal; color: var(--fg3); }
+.wk-stats b { color: var(--fg); font-weight:600; }
+.sleep-on { background: var(--violet-bg) !important; color: var(--violet) !important; }
+.card > h3 {
+  margin: 0;
+  padding: 9px 12px;
+  font: 600 11px/1.2 var(--sans);
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--fg3);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.015);
+}
+.card > h3 .r {
+  margin-left: auto;
+  font: 500 10.5px var(--mono);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--fg3);
+}
+.card .body { padding: 12px; }
+
+/* 英雄数据 */
+.hero { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.hero .big { font: 700 28px/1 var(--mono); letter-spacing: -.6px; color: var(--fg); }
+.hero .pct { font: 600 13px/1 var(--mono); padding: 3px 6px; border-radius: 5px; }
+
+.up { color: var(--up); }
+.down { color: var(--down); }
+.mut { color: var(--fg2); }
+.dim { color: var(--fg3); }
+.bgup { background: var(--up-bg); color: var(--up); border: 1px solid var(--up-border); }
+.bgdown { background: var(--down-bg); color: var(--down); border: 1px solid var(--down-border); }
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 10px;
+}
+.grid2 > div {
+  background: var(--panel-card);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+.grid2 .k { font: 500 10px var(--sans); color: var(--fg3); letter-spacing: .4px; text-transform: uppercase; }
+.grid2 .v { font: 600 13.5px var(--mono); margin-top: 2px; }
+
+/* 表格 */
+table { width: 100%; border-collapse: collapse; font: 12px var(--mono); }
+th {
+  font: 600 10px var(--sans);
+  color: var(--fg3);
+  text-align: left;
+  padding: 7px 10px;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: rgba(16, 22, 34, 0.96);
+  backdrop-filter: blur(8px);
+}
+td { padding: 6.5px 10px; border-bottom: 1px solid var(--line-subtle); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+.empty { padding: 18px; text-align: center; color: var(--fg3); font-size: 12px; }
+
+/* ---------- 左栏：实时行情 ----------
+   数据链路的说明在 index.html 的 renderMarket() 上面和 web.py 的 /api/market。
+   这里只管好看：币种 / 现价 / 24h / 24h 区间条 / 距参考价。 */
+.card > h3 .r.stale { color: var(--warn); }
+.mk { width: 100%; border-collapse: collapse; font: 11.5px/1.4 var(--mono); }
+.mk th {
+  text-align: left; padding: 4px 8px 5px;
+  font: 500 9.5px var(--sans); letter-spacing: .5px; text-transform: uppercase;
+  color: var(--fg3); border-bottom: 1px solid var(--line);
+}
+.mk td { padding: 5px 8px; border-bottom: 1px solid var(--line-subtle); white-space: nowrap; }
+.mk tr:last-child td { border-bottom: 0; }
+.mk .sym { font-weight: 700; color: var(--fg); }
+.mk .px { color: #d7e3f4; font-weight: 600; }
+/* 24h 区间条：现价在 [24h 低, 24h 高] 里的位置。一眼看出它贴着哪头。 */
+.mk .rng {
+  position: relative; width: 52px; height: 5px; border-radius: 3px;
+  background: linear-gradient(90deg, rgba(244,63,94,.30), rgba(255,255,255,.10), rgba(63,185,80,.30));
+}
+.mk .rng > i {
+  position: absolute; top: -2px; width: 2px; height: 9px; margin-left: -1px;
+  border-radius: 2px; background: var(--fg); box-shadow: 0 0 4px rgba(255,255,255,.45);
+}
+
+/* ---------- 左栏：实时行情（缓存提示行） ----------
+   这张卡允许先用上次的价顶上（见 loadMarket / renderMarket），
+   所以必须明确写出"这是旧的" —— 一份不动的价看起来跟行情平静一模一样。 */
+.mk .mkwarn {
+  padding: 5px 8px 1px;
+  font: 10.5px/1.45 var(--sans);
+  color: var(--warn);
+  border-top: 1px dashed var(--line-subtle);
+  margin-top: 3px;
+}
+
+/* ---------- 截断标记（.cut）----------
+ * 日志/输出被截断时挂在卡片底部。做成规则不只是为了好看：
+ * **截断是静默事故**（2026-09-27：一篇手账断在「SOL 破 124 或」，
+ * 事件流里完全看不出来，是靠人肉读句子断没断发现的）。
+ * 挂上它，图上就能一眼扫出来。 */
+.ev .cut {
+  margin-top: 4px; padding-top: 3px;
+  border-top: 1px dashed rgba(240, 136, 62, .35);
+  font: 500 10px/1.35 var(--sans);
+  color: #f0883e;
+}
+
+/* ---------- 折叠提示（.more）----------
+ *
+ * 为什么它不是 .bd 的 ::after 了（2026-09-27）：
+ *
+ * ::after 是 .bd 的**最后一个孩子**。而 .bd 是 `overflow: hidden` + `max-height`
+ * 的裁剪框 —— 正文一超高，提示就跟着被裁掉。于是行为刚好是反的：
+ *
+ *   短正文（实测 240/530 条，45%）  正文 + 提示都塞得进 72px → **提示看得见**，
+ *                                    可点开什么都没有（本来就全露着）
+ *   长正文（真需要展开的那些）       提示被裁掉 → **没有任何提示**，
+ *                                    没人知道这张卡能点
+ *
+ * 用户 2026-09-27 报的"点击展开完整输出，展开了也是啥都没有"，命中的是第一类。
+ *
+ * 现在它是 .ev 的独立一层，`position: absolute` 盖在裁剪区的底部。
+ * .ev 加了 position: relative 就是为它。而且**只在真的被裁掉时才出现** ——
+ * 那个判断在 JS 的 markClip() 里（要量 scrollHeight，CSS 自己做不到）。
+ * 量不出来（JS 挂了）时的降级是"提示不出现、正文照旧裁着" —— 和改之前一样。
+ */
+.ev .more { display: none; }
+.ev.clip:not(.open) .bd { cursor: pointer; }
+.ev.clip:not(.open) .more {
+  display: block;
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 15px 10px 5px;
+  text-align: right;
+  font: 500 10px/1.3 var(--sans);
+  color: var(--accent);
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, .62) 62%);
+}
+
+/* ---------- 中栏：日志流与过滤器 ---------- */
+.filters {
+  display: flex;
+  gap: 5px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(11, 15, 25, 0.85);
+  backdrop-filter: blur(8px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.filters::-webkit-scrollbar { display: none; }
+.filters button {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg3);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.filters button:hover { color: var(--fg); background: rgba(255, 255, 255, 0.04); }
+.filters button.act {
+  background: rgba(88, 166, 255, 0.15);
+  border-color: rgba(88, 166, 255, 0.4);
+  color: #bcd6ff;
+}
+
+.stream {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  font: 12px/1.55 var(--mono);
+  scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 事件气泡与卡片 */
+.ev {
+  border-left: 2.5px solid var(--line);
+  background: rgba(17, 24, 38, 0.5);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 6px 10px 7px 10px;
+  overflow-wrap: anywhere;
+  position: relative;   /* 折叠提示 .more 靠它定位（见下面那一段） */
+  transition: all .15s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+.ev .hd {
+  font: 500 10px/1.2 var(--sans);
+  color: var(--fg3);
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* 所有气泡的正文默认 pre-wrap。
+   也就是说 `\n` **一律真换行**，不管这个事件有没有经过 markdown 渲染。
+   原来只有 agent_text / thinking / tool_result 等几类单独写了 pre-wrap，
+   其余（system、error、trade、subagent_start…）的换行会被浏览器折叠成空格，
+   于是"理由：xxx"和下一行糊在一起。2026-09-27 统一到这一行。 */
+.ev .bd { color: #d0d7de; white-space: pre-wrap; }
+
+.ev.beat_start {
+  border-color: var(--fg3);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--fg2);
+  font-size: 11px;
+}
+.ev.beat_end {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.015);
+  color: var(--fg3);
+  font-size: 11px;
+}
+.ev.agent_text, .ev.beat_summary {
+  border-color: var(--fg2);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg);
+  white-space: pre-wrap;
+}
+
+/* 思维链 - 借鉴 Aint Shimmer 风格 */
+.ev.thinking {
+  border-color: #6e40c9;
+  background: linear-gradient(90deg, rgba(34, 18, 58, 0.4) 0%, rgba(20, 14, 34, 0.3) 100%);
+  color: #c4b5fd;
+  font-size: 11.5px;
+}
+.ev.thinking .bd {
+  max-height: 84px;
+  overflow: hidden;
+  white-space: pre-wrap;
+  transition: max-height .25s ease;
+}
+.ev.thinking.open .bd { max-height: none; }
+
+/* 工具调用与返回 */
+.ev.tool_call {
+  border-color: var(--accent);
+  background: rgba(13, 31, 58, 0.45);
+}
+.ev.tool_call .nm { color: var(--accent); font-weight: 600; }
+/* 参数摊开之后卡片会变高（`fs_write` 的 content 能有几十行），所以要折叠。
+   折叠高度比 tool_result 大一点 —— 工具调用是"看清楚它到底要干什么"的地方。 */
+.ev.tool_call .bd {
+  max-height: 96px;
+  overflow: hidden;
+  transition: max-height .25s ease;
+}
+.ev.tool_call.open .bd { max-height: none; }
+.ev.tool_result {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--fg3);
+  font-size: 11px;
+}
+.ev.tool_result .bd {
+  max-height: 72px;
+  overflow: hidden;
+  white-space: pre-wrap;
+  transition: max-height .25s ease;
+}
+.ev.tool_result.open .bd { max-height: none; }
+
+/* 子代理 */
+.ev.subagent_start {
+  border-color: #d29922;
+  background: rgba(43, 30, 8, 0.35);
+  color: #ffd880;
+}
+.ev.subagent_tool {
+  border-color: #554415;
+  background: rgba(30, 24, 10, 0.2);
+  color: var(--fg3);
+  font-size: 11px;
+  margin-left: 10px;
+}
+.ev.subagent_end {
+  border-color: #d29922;
+  background: rgba(36, 26, 6, 0.45);
+  color: #f7dfa5;
+}
+.ev.subagent_end .bd {
+  max-height: 96px;
+  overflow: hidden;
+  white-space: pre-wrap;
+  transition: max-height .25s ease;
+}
+.ev.subagent_end.open .bd { max-height: none; }
+
+/* 成交与拒绝 */
+.ev.trade {
+  border-color: var(--up);
+  background: rgba(9, 38, 20, 0.4);
+  color: #92ecc0;
+}
+.ev.trade.sell {
+  border-color: var(--down);
+  background: rgba(45, 12, 18, 0.4);
+  color: #ffb3bd;
+}
+.ev.trade_rejected {
+  border-color: #f0883e;
+  background: rgba(38, 20, 10, 0.35);
+  color: #ffab70;
+  font-size: 11.5px;
+}
+
+/* 人工指令与系统 - Operator 专属紫色 */
+.ev.human_instruction {
+  border-color: var(--violet);
+  background: rgba(38, 17, 68, 0.45);
+  color: #f0e6ff;
+  border-left-width: 3.5px;
+}
+.ev.human_instruction .hd { color: var(--violet); font-weight: 600; }
+.ev.error { border-color: var(--down); background: rgba(56, 12, 18, 0.5); color: #ffb8c0; }
+.ev.cost_nudge { border-color: #d29922; background: rgba(40, 30, 10, 0.4); color: #ffe69c; }
+
+/* 叙事层：HalluAct 自己写的记录。面板上的主角，其它都是它的附件。 */
+.ev.narrative {
+  border-left-width: 3.5px;
+  border-color: #7d8590;
+  background: linear-gradient(180deg, rgba(31, 39, 55, 0.72) 0%, rgba(19, 25, 37, 0.6) 100%);
+  color: #e6edf3;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.75;
+  padding: 11px 14px 12px 14px;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.32);
+}
+.ev.narrative .hd { color: #8b949e; letter-spacing: .3px; margin-bottom: 6px; }
+.ev.narrative .bd { color: #e6edf3; }
+.ev.narrative .bd strong { color: #fff; }
+
+/* ==================== markdown 渲染（.bd.md） ====================
+ *
+ * 加了 .md 的正文说明它是 mdRender() 出来的块级 HTML，里面**每个换行都已经
+ * 显式变成了 <br> 或块标签**。所以这里必须把 pre-wrap 关掉，否则那两套换行
+ * 会叠加，读起来全是空行。
+ *
+ * ⚠️ 这条要待在**所有** `.ev.xxx .bd` 规则后面：.ev .bd.md 与那些规则的
+ *    优先级都是 (0,3,0)，靠源码顺序定胜负（没有用 !important，也不该用）。
+ */
+.ev .bd.md { white-space: normal; }
+.ev .bd.md > :first-child { margin-top: 0; }
+.ev .bd.md > :last-child { margin-bottom: 0; }
+
+/* 段落：块间距要小，日志是密排的流，不是文章页 */
+.ev .bd.md p { margin: 0 0 7px; }
+.ev .bd.md p:last-child { margin-bottom: 0; }
+
+/* 标题：日志里的 `### 1. 账户确认` 就是它。
+   用 div 而不是 h1-h6 —— 卡片标题是 h3，正文里再来真的 h 标签会串味。 */
+.ev .bd.md .md-h { font-weight: 650; color: var(--fg); margin: 9px 0 5px; }
+.ev .bd.md .md-h:first-child { margin-top: 0; }
+.ev .bd.md .md-h1 { font-size: 15px; }
+.ev .bd.md .md-h2 { font-size: 14px; }
+.ev .bd.md .md-h3, .ev .bd.md .md-h4,
+.ev .bd.md .md-h5, .ev .bd.md .md-h6 { font-size: 13px; color: #c9d5e4; }
+.ev .bd.md .md-h3::before, .ev .bd.md .md-h4::before,
+.ev .bd.md .md-h5::before, .ev .bd.md .md-h6::before { content: "▍"; color: var(--fg3); margin-right: 3px; }
+
+/* 列表 */
+.ev .bd.md ul, .ev .bd.md ol { margin: 5px 0 7px; padding-left: 20px; }
+.ev .bd.md li { margin: 2px 0; }
+.ev .bd.md ul { list-style: none; padding-left: 15px; }
+.ev .bd.md ul > li::before { content: "·"; color: var(--fg3); display: inline-block; width: 10px; margin-left: -10px; font-weight: 700; }
+.ev .bd.md ul > li.sub { margin-left: 14px; }
+.ev .bd.md ul > li.sub::before { content: "◦"; }
+.ev .bd.md ol { list-style: decimal; }
+
+/* 引用 */
+.ev .bd.md blockquote {
+  margin: 6px 0; padding: 3px 0 3px 10px;
+  border-left: 2px solid rgba(255, 255, 255, .22);
+  color: #b6c2d1;
+}
+
+/* 分隔线 */
+.ev .bd.md .md-hr { display: block; height: 1px; border: 0; background: rgba(255, 255, 255, .13); margin: 10px 0; }
+
+/* 代码：行内与围栏 */
+.ev .bd.md code {
+  font: 11.5px/1.4 var(--mono);
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .07);
+  border-radius: 4px; padding: .5px 4px;
+  color: #d2e2ff; word-break: break-all;
+}
+.ev .bd.md pre.md-code {
+  margin: 6px 0; padding: 8px 10px;
+  background: rgba(0, 0, 0, .35);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  white-space: pre;                 /* 代码块自己管换行，别让浏览器再折 */
+  font: 11.5px/1.5 var(--mono);
+  color: #c8d6e5;
+}
+.ev .bd.md table.md-t { border-collapse: collapse; margin: 6px 0; font-size: 11.5px; }
+.ev .bd.md table.md-t th, .ev .bd.md table.md-t td {
+  border: 1px solid var(--line); padding: 3px 7px; text-align: left; white-space: nowrap;
+}
+.ev .bd.md table.md-t th { background: rgba(255, 255, 255, .045); color: var(--fg2); font-weight: 600; }
+.ev .bd.md del { color: var(--fg3); }
+.ev .bd.md .tex { color: #ffd9a8; }
+/* 原来这里有 .ev.narrative .hr / .q / code 三条 —— 是给旧的 mdLite 用的
+   （它把分隔线渲染成 <span class="hr">、引用渲染成 <span class="q">）。
+   mdRender 之后这两样变成了真的 <hr class="md-hr"> 和 <blockquote>，
+   上面 .ev .bd.md 那一段已经包了它们的样式，所以这三条删掉了。
+   留着也无害，但同一件事有两种写法，下次改的人就得先猜哪条在生效。 */
+
+/* 叙事卡右下角的署名（模型 · 耗时）。原来是拼进正文的 `—— xxx`，
+   markdown 渲染之后那样会把署名也变成段落的一部分。 */
+.ev.narrative .sig {
+  margin-top: 8px; padding-top: 6px;
+  border-top: 1px solid var(--line-subtle);
+  font: 500 10px var(--mono); color: var(--fg3); text-align: right;
+}
+
+/* 轻量 LaTeX 渲染（见 mdRender / texLite）。不引 KaTeX —— 日志里
+   只需要处理 \text{}、上下标、\% 和几个符号，371KB 不值得。 */
+.tex {
+  font-family: var(--mono);
+  font-size: .93em;
+  background: rgba(255, 255, 255, .05);
+  border-radius: 3px;
+  padding: 0 3px;
+  white-space: nowrap;
+}
+.tex sub, .tex sup { font-size: .72em; }
+.ev.narrative .tex { background: rgba(255, 255, 255, .07); }
+
+/* 底部输入框条 */
+.bar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  padding-bottom: calc(10px + var(--safe-bottom));
+  border-top: 1px solid var(--line);
+  background: rgba(11, 15, 25, 0.95);
+  backdrop-filter: blur(12px);
+  flex-shrink: 0;
+}
+.bar input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font: 13px var(--sans);
+  outline: none;
+  transition: all .15s;
+}
+.bar input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ---------- 右栏：子代理 / 成交 / 笔记 ---------- */
+.pool { display: flex; flex-direction: column; gap: 6px; }
+.pool .m {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: var(--panel-card);
+  transition: all .15s ease;
+}
+.pool .m.def {
+  border-color: rgba(88, 166, 255, 0.45);
+  background: rgba(14, 25, 45, 0.7);
+}
+.pool .m .top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11.5px var(--mono);
+}
+.pool .m .tag {
+  font: 500 9.5px var(--sans);
+  padding: 1.5px 5px;
+  border-radius: 99px;
+  background: rgba(88, 166, 255, 0.15);
+  color: #bcd6ff;
+  border: 1px solid rgba(88, 166, 255, 0.35);
+}
+.pool .m .u { font-size: 11px; color: var(--fg2); margin-top: 3px; line-height: 1.4; }
+.pool .m .a { font-size: 10.5px; color: #ff9999; margin-top: 2px; line-height: 1.4; }
+
+.slots { display: flex; gap: 4px; }
+.slots i {
+  width: 14px;
+  height: 5px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  display: block;
+  transition: background .2s;
+}
+.slots i.on { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+
+/* SVG 曲线 */
+.chart { width: 100%; height: 120px; display: block; }
+.chartlab { display: flex; justify-content: space-between; font: 10.5px var(--mono); color: var(--fg3); padding: 0 12px 8px; }
+
+/* 文件树 */
+.tree { font: 11.5px var(--mono); max-height: 240px; overflow-y: auto; }
+.tree .it {
+  padding: 5px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--line-subtle);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background .15s;
+}
+.tree .it:hover { background: rgba(255, 255, 255, 0.04); }
+.tree .it .sz { margin-left: auto; color: var(--fg3); font-size: 10px; }
+pre.file {
+  margin: 0;
+  padding: 10px;
+  background: #05080e;
+  font: 11.5px/1.55 var(--mono);
+  max-height: 280px;
+  overflow: auto;
+  white-space: pre-wrap;
+  border-top: 1px solid var(--line);
+}
+
+.limits { font: 11.5px var(--mono); color: var(--fg2); }
+.limits div { display: flex; justify-content: space-between; padding: 4.5px 0; border-bottom: 1px solid var(--line-subtle); }
+.limits div:last-child { border: 0; }
+
+/* ---------- 移动端专属 Tab 导航（抄自 Aint 移动端体验） ---------- */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(52px + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: rgba(11, 15, 25, 0.96);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--line);
+  z-index: 90;
+  grid-template-columns: repeat(3, 1fr);
+}
+.mobile-nav button {
+  background: none;
+  border: none;
+  color: var(--fg3);
+  font: 500 12px var(--sans);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.mobile-nav button.act {
+  color: var(--accent);
+  font-weight: 600;
+}
+.mobile-nav button span.icon { font-size: 16px; line-height: 1; }
+
+/* 移动端断点适配 (<= 1024px) */
+@media (max-width: 1024px) {
+  html, body {
+    overflow: hidden;
+    height: 100dvh;
+  }
+  header {
+    padding: 0 12px;
+    height: 48px;
+    flex: 0 0 48px;
+    gap: 8px;
+  }
+  .brand { font-size: 13.5px; }
+  .pill-group { display: flex; }
+  .pill.hide-mobile { display: none; }
+  
+  main {
+    display: block;
+    height: calc(100dvh - 48px - 52px - var(--safe-bottom));
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* 移动端三个独立 Tab 视图，彻底杜绝内外滚动冲突 */
+  .col {
+    display: none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px;
+    padding-bottom: 24px;
+    gap: 12px;
+  }
+  .col.active {
+    display: flex;
+  }
+  
+  .col.center {
+    display: none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    padding: 0;
+  }
+  .col.center.active {
+    display: flex;
+  }
+  
+  .stream {
+    flex: 1;
+    height: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px;
+    margin-bottom: 0;
+  }
+  
+  .bar {
+    padding: 8px 12px;
+    padding-bottom: 8px; /* 贴紧底部 Tab 栏 */
+    background: rgba(11, 15, 25, 0.98);
+  }
+  .bar input {
+    font-size: 14px; /* 防止 iOS 聚焦放大 */
+  }
+
+  .mobile-nav {
+    display: grid;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="dot" id="dot"></span>
+    <span id="agentName">HalluAct · Trader</span>
+  </div>
+  <div class="pill-group">
+    <span class="pill" id="pStatus">连接中…</span>
+    <span class="pill" id="pNext">—</span>
+    <span class="pill hide-mobile" id="pModel">—</span>
+    <span class="pill hide-mobile" id="pTokens" title="累计消耗 Token">—</span>
+    <span class="pill" id="pSleep" title="睡眠状态">—</span>
+    <span class="pill hide-mobile" id="pMcp">—</span>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn sm" id="btnPause">暂停</button>
+  <button class="btn sm primary" id="btnWake">唤醒</button>
+</header>
+
+<main>
+  <!-- ================= 视图 1 (左)：账户与持仓 ================= -->
+  <div class="col" id="view-portfolio">
+    <div class="card">
+      <h3>资产总览</h3>
+      <div class="body">
+        <div class="hero">
+          <span class="big" id="equity">—</span>
+          <span class="pct" id="retPct">—</span>
+        </div>
+        <div class="grid2">
+          <div><div class="k">可用现金</div><div class="v" id="cash">—</div></div>
+          <div><div class="k">持仓市值</div><div class="v" id="mv">—</div></div>
+          <div><div class="k">未实现盈亏</div><div class="v" id="upnl">—</div></div>
+          <div><div class="k">已实现盈亏</div><div class="v" id="rpnl">—</div></div>
+          <div><div class="k">摩擦手续费</div><div class="v" id="fees">—</div></div>
+          <div><div class="k">今日涨跌</div><div class="v" id="daypnl">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>实时行情 <span class="r" id="mkMeta">—</span></h3>
+      <div id="mkBox"><div class="empty">等待取价…</div></div>
+    </div>
+
+    <div class="card">
+      <h3>权益曲线 <span class="r" id="curveMeta"></span></h3>
+      <svg class="chart" id="chart" preserveAspectRatio="none"></svg>
+      <div class="chartlab"><span id="curveFrom">—</span><span id="curveTo">—</span></div>
+    </div>
+
+    <div class="card">
+      <h3>当前持仓 <span class="r" id="posCount">0</span></h3>
+      <div id="posBox"><div class="empty">空仓</div></div>
+    </div>
+
+    <div class="card">
+      <h3>交易绩效</h3>
+      <div class="body limits" id="perfBox"><div><span class="dim">暂无已平仓交易</span></div></div>
+    </div>
+
+    <div class="card">
+      <h3>风控纪律（底层硬编码）</h3>
+      <div class="body limits" id="limitBox"></div>
+    </div>
+  </div>
+
+  <!-- ================= 视图 2 (中)：操盘日志流 (默认主视图) ================= -->
+  <div class="col center active" id="view-stream">
+    <div class="filters" id="filters">
+      <button data-f="all" class="act">全部</button>
+      <button data-f="narrative">日志</button>
+      <button data-f="agent_text,beat_summary">思考</button>
+      <button data-f="thinking">思维链</button>
+      <button data-f="tool_call,parallel_batch">工具调用</button>
+      <button data-f="subagent_start,subagent_tool,subagent_end">子代理</button>
+      <button data-f="trade,trade_rejected">成交</button>
+      <button data-f="error">错误</button>
+      <button data-f="system,human_instruction,persona_loaded">系统</button>
+      <button data-f="sleep_start,sleep_end,wake_request,wake_policy_changed,wake_refs_seeded,wake_capped,price_trigger">调度</button>
+      <button id="btnClear" style="margin-left:auto">清屏</button>
+    </div>
+    <div class="stream" id="stream"></div>
+    <div class="bar">
+      <input id="instr" placeholder="给 Hallu 留言（下一轮心跳的最高优先级指令 —— 它不会因此立刻醒）…" autocomplete="off">
+      <button class="btn primary" id="btnSend">发送</button>
+    </div>
+  </div>
+
+  <!-- ================= 视图 3 (右)：子代理 / 成交 / 笔记 ================= -->
+  <div class="col" id="view-agent">
+    <div class="card" id="subCard">
+      <h3>子代理池 <span class="r" id="subMeta"></span></h3>
+      <div class="body">
+        <div class="slots" id="subSlots"></div>
+        <div class="pool" id="subPool" style="margin-top:10px"><div class="empty">未配置</div></div>
+      </div>
+    </div>
+
+    <div class="card" id="wakeCard">
+      <h3>唤醒策略与睡眠 <span class="r" id="wakeMeta"></span></h3>
+      <div class="body">
+        <div class="wk-row">
+          <label>兜底间隔</label>
+          <span><input type="number" id="wkInterval" min="5" max="1440"> 分钟
+            <span style="color:var(--fg3);font-size:10.5px" id="wkIntervalNote"></span></span>
+        </div>
+        <div class="wk-row">
+          <label>每小时上限</label>
+          <span><input type="number" id="wkCap" min="0" max="60"> 次价格触发</span>
+        </div>
+        <div class="wk-row">
+          <label>取价 / 冷却</label>
+          <span><input type="number" id="wkPoll" min="15" max="600"> 秒 ·
+                <input type="number" id="wkCooldown" min="0" max="3600"> 秒</span>
+        </div>
+        <div class="wk-row">
+          <label>默认阈值</label>
+          <span><input type="number" id="wkDefaultPct" min="0" step="0.1"> %
+                <span style="color:var(--fg3);font-size:10.5px">（没单独配的币用这个）</span></span>
+        </div>
+        <div class="wk-row">
+          <label>睡眠</label>
+          <span><label><input type="checkbox" id="wkDuringSleep"> 睡眠期间人类阈值也叫醒她</label></span>
+        </div>
+        <div class="wk-row">
+          <label>价格触发</label>
+          <span><label><input type="checkbox" id="wkEnabled"> 总开关</label></span>
+        </div>
+        <div class="wk-actions">
+          <button id="wkSave">保存（下一次判定生效）</button>
+          <button id="wkSleep">叫醒 / 去睡</button>
+          <span class="hint">Agent 只能把间隔改得更短，改不松</span>
+        </div>
+        <div class="wk-rules" id="wkRules"></div>
+        <div class="wk-stats" id="wkStats"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>成交记录 <span class="r" id="tradeMeta"></span></h3>
+      <div id="tradeBox"><div class="empty">暂无成交</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Agent 工作区与笔记 <span class="r"><a href="#" id="btnRefreshWs">刷新</a></span></h3>
+      <div class="tree" id="tree"><div class="empty">—</div></div>
+      <div id="fileBox"></div>
+    </div>
+  </div>
+</main>
+
+<!-- 移动端专属底部导航 -->
+<nav class="mobile-nav" id="mobileNav">
+  <button data-tab="view-stream" class="act">
+    <span class="icon">💬</span>
+    <span>操盘流</span>
+  </button>
+  <button data-tab="view-portfolio">
+    <span class="icon">📊</span>
+    <span>资产持仓</span>
+  </button>
+  <button data-tab="view-agent">
+    <span class="icon">⚙️</span>
+    <span>模型笔记</span>
+  </button>
+</nav>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = (v, d=2) => (v===null||v===undefined||isNaN(v)) ? "—"
+  : Number(v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtK = n => n >= 1000 ? (n/1000).toFixed(1)+"k" : String(n);
+const cls = v => (v>0?'up':v<0?'down':'mut');
+const sgn = (v,d=2) => (v===null||v===undefined||isNaN(v)) ? "—" : (v>0?'+':'') + num(v,d);
+
+/* 日志/叙事的 markdown 渲染在下面（mdInline + mdRender）。
+   这里是它依赖的 LaTeX 那一层，先转义再替换，所以不存在注入。 */
+/* ---------------- 轻量 LaTeX 渲染 ----------------
+ *
+ * 为什么需要它：操盘 Agent 和叙事层都会时不时写出 $0.30\%$、$\text{ATR}_{14}$、
+ * $\ge 2:1$ 这类 LaTeX。面板如果不管，日志里就是满屏的美元符号和反斜杠。
+ *
+ * 为什么不上 KaTeX：那是 371KB，而日志里需要处理的只有
+ * \text{}、上下标、\%、几个比较符号。为这个引一个数学排版引擎不划算。
+ * （真正的数学排版需求——比如 Agent 回答数学推导——才值得引，那时再说。）
+ *
+ * ★ 唯一的坑：$ 也是货币符号。
+ *   日志里既有 $0.30\%$（LaTeX），也有 $2,690（美元价）和 $300-$400（区间）。
+ *   粗暴地去掉所有 $ 会把美元符号吃掉，所以这里只处理**能认出是 LaTeX 的**：
+ *     ① 内容里有反斜杠命令、^、_ 或 {,}
+ *     ② 内容是纯数字/逗号/小数点组合（$83,600$ 这种）
+ *   认不出来的原样保留 —— 宁可不渲染，也不吃掉货币符号。
+ */
+const TEX_SYM = [
+  [/\\geq?\b/g, "≥"], [/\\leq?\b/g, "≤"], [/\\neq\b/g, "≠"], [/\\approx\b/g, "≈"],
+  [/\\times\b/g, "×"], [/\\cdot\b/g, "·"], [/\\pm\b/g, "±"],
+  [/\\to\b|\\rightarrow\b/g, "→"], [/\\infty\b/g, "∞"], [/\\propto\b/g, "∝"],
+  [/\\alpha\b/g, "α"], [/\\beta\b/g, "β"], [/\\gamma\b/g, "γ"], [/\\delta\b/g, "δ"],
+  [/\\lambda\b/g, "λ"], [/\\mu\b/g, "μ"], [/\\sigma\b/g, "σ"], [/\\pi\b/g, "π"],
+  [/\\theta\b/g, "θ"], [/\\Delta\b/g, "Δ"], [/\\Sigma\b/g, "Σ"], [/\\Omega\b/g, "Ω"],
+];
+const _LT = "\u0001", _GT = "\u0002";
+
+function texBody(raw){
+  let s = raw;
+  /* esc() 已经动过手脚了，先把它的足迹反解回来，最后再还原 */
+  s = s.replace(/&lt;/g, _LT).replace(/&gt;/g, _GT);
+  s = s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  /* 千分位：LaTeX 里写成 {,}，转义后是 &#123;,&#125; */
+  s = s.replace(/&#123;,&#125;/g, ",").replace(/\{,\}/g, ",");
+  s = s.replace(/&#123;/g, "{").replace(/&#125;/g, "}");
+  s = s.replace(/\\,/g, "");
+  /* 结构 */
+  s = s.replace(/\\text\{([^{}]*)\}/g, "$1").replace(/\\mathrm\{([^{}]*)\}/g, "$1");
+  s = s.replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, "($1)/($2)");
+  s = s.replace(/\\(?:left|right|,|;|!|:| )/g, " ");
+  /* 转义字符 */
+  s = s.replace(/\\%/g, "%").replace(/\\\$/g, "$");
+  s = s.replace(/\\\{/g, "{").replace(/\\\}/g, "}");
+  /* 符号 */
+  for (const [re, ch] of TEX_SYM) s = s.replace(re, ch);
+  /* 剩下的未知命令：去掉反斜杠，至少让它可读 */
+  s = s.replace(/\\([A-Za-z]+)/g, "$1");
+  /* 上下标 */
+  s = s.replace(/_\{([^{}]*)\}/g, "<sub>$1</sub>").replace(/_([A-Za-z0-9+\-]+)/g, "<sub>$1</sub>");
+  s = s.replace(/\^\{([^{}]*)\}/g, "<sup>$1</sup>").replace(/\^([A-Za-z0-9+\-]+)/g, "<sup>$1</sup>");
+  s = s.replace(/[ \t]{2,}/g, " ").trim();
+  return s.replace(new RegExp(_LT, "g"), "&lt;").replace(new RegExp(_GT, "g"), "&gt;");
+}
+
+/* 能认出是 LaTeX 的特征。刻意收得很紧 —— 认不出就原样保留。
+ *
+ * 真实日志里的形态（拿线上事件流统计出来的）分两类：
+ *   真 LaTeX：$0.30\%$、$\text{ATR}_{14}$、$\ge 2:1$、$83{,}600$
+ *   美元符号：$2,690（未闭合）、$300-$400（区间）、$10,000.00 USDT
+ *
+ * 所以匹配条件只有这些，剩下的都可能误伤货币：
+ *   \命令、\%、^、_、{,}       ← LaTeX 独有，安全
+ *   ^[0-9][0-9,.]*$            ← 纯数字（83,600 / 122.94 / 74）
+ *                                不含 : / - / 空格，所以 $0.8:1$ 和 $300-$400 不会中
+ */
+const TEX_HINT = /\\[A-Za-z]|\\%|\^|_\{|_[\dA-Za-z]|\{,\}|&#123;,&#125;|^[0-9][0-9,.]*$/;
+
+function texLite(t){
+  return t.replace(/\$([^$\n]{1,120})\$/g, (m, inner) => {
+    if (!TEX_HINT.test(inner)) return m;
+    /* 以 - 结尾的几乎一定是美元区间（$300-$400），不是数学 */
+    if (/[-–—]\s*$/.test(inner)) return m;
+    return `<span class="tex">${texBody(inner)}</span>`;
+  });
+}
+
+/* ---------------- 日志的 markdown 渲染 ----------------
+ *
+ * 为什么需要它：`agent_text`、`thinking`、`beat_summary` 里几乎全是 markdown
+ * （`### 1. 账户与事件确认`、`- **当前权益**: ...`、`| 币种 | 现价 |`）。
+ * 加它之前这些一律 esc 后原样显示，于是面板上最占地方的那几块长成了
+ * "带井号、还漏着星号"的纯文本 —— 就是 2026-09-27 被指出的"极其不好看"。
+ *
+ * 为什么不上 marked / markdown-it：面板是**零依赖单文件**（HANDOVER 二）。
+ * 为一个日志流引 40KB 的库，换来的功能我们只用得上一小部分。
+ *
+ * 安全：先 esc() 再替换，所有标签都是这里写死的固定几张。不加链接和图片 ——
+ * 日志不是网页，而且 Agent 的输出不该有能力在面板上造出可点的东西。
+ * （历史事故是"少一个右括号整页死"，所以这段刻意写得直白、行数少、无递归。）
+ *
+ * 换行：容器是 white-space: normal（见 CSS 的 .bd.md），所以**每个 \n 都由
+ * 这里显式变成 <br> 或块标签**。段落内联行变 <br>，行首的结构变块。
+ */
+function mdInline(t){
+  /* 行内 code 先摘走：里面的 ** | _ 都不该再被当成 markdown */
+  const codes = [];
+  let s = t.replace(/`([^`\n]+)`/g, (m, c) => {
+    codes.push(c);
+    return "\u0001" + (codes.length - 1) + "\u0001";
+  });
+  s = texLite(s);
+  s = s.replace(/\*\*\*([^*\n]+)\*\*\*/g, "<strong><em>$1</em></strong>");
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/__([^_\n]+)__/g, "<strong>$1</strong>");
+  s = s.replace(/~~([^~\n]+)~~/g, "<del>$1</del>");
+  s = s.replace(/(^|[^*\w])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+  /* 单下划线斜体收得很紧：工具名里全是下划线（paper__get_risk_limits、
+     fs_read），随便认会把它们切成斜体碎片。只在两侧都是非词字符时才认。 */
+  s = s.replace(/(^|[\s(（[「])\_([^_\n]+)\_(?=$|[\s)）\]」,，.。;；:：!！?？])/g, "$1<em>$2</em>");
+  s = s.replace(/\u0001(\d+)\u0001/g, (m, i) => "<code>" + codes[+i] + "</code>");
+  return s;
+}
+
+function mdRender(src){
+  if(src === null || src === undefined) return "";
+  const lines = esc(src).replace(/\r\n?/g, "\n").split("\n");
+  const out = [];
+  let para = [], quote = [], list = null, table = null;
+
+  /* 表格分隔行：| --- | :--: | 这种。先放一行 hr 判断之后再看它，
+     所以写 `---` 单独一行仍然是分隔线，不会被误认成表格。 */
+  const isSep = l => /^[ \t]*\|?[ \t]*:?-{2,}:?[ \t]*(\|[ \t]*:?-{2,}:?[ \t]*)*\|?[ \t]*$/.test(l);
+  const cells = l => l.replace(/^[ \t]*\|/, "").replace(/\|[ \t]*$/, "").split("|").map(c => c.trim());
+
+  const flushPara = () => { if(para.length){ out.push("<p>" + para.map(mdInline).join("<br>") + "</p>"); para = []; } };
+  const flushQuote = () => { if(quote.length){ out.push("<blockquote>" + quote.map(mdInline).join("<br>") + "</blockquote>"); quote = []; } };
+  const flushList = () => {
+    if(!list) return;
+    const tag = list.type === "ol" ? "ol" : "ul";
+    out.push("<" + tag + ">" + list.items.map(it =>
+      "<li" + (it.sub ? ' class="sub"' : "") + ">" + mdInline(it.text) + "</li>").join("") + "</" + tag + ">");
+    list = null;
+  };
+  const flushTable = () => {
+    if(!table) return;
+    const head = table.head.map(h => "<th>" + mdInline(h) + "</th>").join("");
+    const rows = table.rows.map(r => "<tr>" + table.head.map((_, i) =>
+      "<td>" + mdInline(r[i] || "") + "</td>").join("") + "</tr>").join("");
+    out.push('<table class="md-t"><thead><tr>' + head + "</tr></thead><tbody>" + rows + "</tbody></table>");
+    table = null;
+  };
+  const flushAll = () => { flushPara(); flushQuote(); flushList(); flushTable(); };
+
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i], bare = line.trim();
+
+    /* 围栏代码块：一直吃到配对的 ``` 或文末。
+       允许不闭合 —— 模型漏一个反引号是常事，漏了就整段当代码，
+       总比后面几百行全被当成 markdown 强。 */
+    if(/^```/.test(bare)){
+      flushAll();
+      const buf = [];
+      i++;
+      while(i < lines.length && !/^```/.test(lines[i].trim())){ buf.push(lines[i]); i++; }
+      out.push('<pre class="md-code">' + buf.join("\n") + "</pre>");
+      continue;
+    }
+    if(!bare){ flushAll(); continue; }                       // 空行 = 块边界
+    if(/^([-*_])\1{2,}$/.test(bare)){ flushAll(); out.push('<hr class="md-hr">'); continue; }
+
+    const h = bare.match(/^(#{1,6})\s+(.*)$/);
+    if(h){ flushAll(); out.push('<div class="md-h md-h' + h[1].length + '">' + mdInline(h[2]) + "</div>"); continue; }
+
+    if(/^&gt;\s?/.test(bare)){                               // 引用（> 已被 esc 成 &gt;）
+      flushPara(); flushList(); flushTable();
+      quote.push(bare.replace(/^&gt;\s?/, ""));
+      continue;
+    }
+
+    if(bare.indexOf("|") >= 0 && i + 1 < lines.length && isSep(lines[i + 1].trim())){
+      flushAll();
+      table = { head: cells(bare), rows: [] };
+      i++;                                                   // 跳过表头分隔行
+      while(i + 1 < lines.length && lines[i + 1].trim() && lines[i + 1].indexOf("|") >= 0){
+        i++;
+        table.rows.push(cells(lines[i].trim()));
+      }
+      flushTable();
+      continue;
+    }
+
+    const li = bare.match(/^(?:([-*+])|(\d{1,3})[.)])\s+(.*)$/);
+    if(li){
+      flushPara(); flushQuote(); flushTable();
+      const type = li[1] ? "ul" : "ol";
+      const sub = line.length - line.replace(/^[ \t]+/, "").length >= 2;
+      if(!list || list.type !== type){ flushList(); list = { type: type, items: [] }; }
+      list.items.push({ text: li[3], sub: sub });
+      continue;
+    }
+
+    flushQuote(); flushList(); flushTable();
+    para.push(bare);
+  }
+  flushAll();
+  return out.join("");
+}
+
+let FILTER = "all", LAST = null, STREAM = [], AUTO = true;
+const MAXROWS = 500;
+
+/* ---------------- 移动端 Tab 切换 ---------------- */
+const mobileNav = $("#mobileNav");
+if(mobileNav){
+  mobileNav.addEventListener("click", e => {
+    const btn = e.target.closest("button[data-tab]");
+    if(!btn) return;
+    const tabId = btn.dataset.tab;
+    document.querySelectorAll(".mobile-nav button").forEach(b => b.classList.remove("act"));
+    btn.classList.add("act");
+
+    document.querySelectorAll("main > .col").forEach(col => {
+      col.classList.remove("active");
+      if(col.id === tabId) col.classList.add("active");
+    });
+
+    if(tabId === "view-stream"){
+      const s = $("#stream");
+      s.scrollTop = s.scrollHeight;
+    }
+  });
+}
+
+/* ---------------- 唤醒策略与睡眠 ----------------
+ * 这一段的用途是读病：光看 token 数字看不出钱花在哪，
+ * 得知道每一轮是「谁」把 Agent 叫醒的。
+ *   · 定时兜底占绝大多数 + 价格触发长期为 0  → 间隔还能再放长
+ *   · 自唤醒很频繁                          → 阈值设得太敏感，其实是在烧钱
+ *   · 睡眠时长为 0                          → 配额没生效，去查 mcp-paper
+ */
+let WAKE = null;
+
+/* 留言框该怎么说话（2026-09-27 改）。
+ *
+ * 原来那句 placeholder 写的是「发送后将立即唤醒」—— **它两半都是假的**：
+ *   · 睡着时：`decide()` 只认登记过的唤醒请求（`request_wake`），留言没登记，
+ *     所以它一条留言都叫不醒。实测：12:05 的留言到 12:17 仍是 pending，零 beat。
+ *   · 清醒时：留言只把 `wake_event` 置一下，调度器重判之后如果没到兜底间隔，
+ *     照样不跑（2026-09-27 定的语义：**留言不触发心跳，"立即唤醒"按钮才触发**）。
+ *
+ * 而它真正的语义是**确定的**：留言会在**下一轮真的跑起来的心跳**开头被注入，
+ * 作为「## 人类留言」的最高优先级上下文块（agent.py 的 run_beat 里 pop）。
+ *
+ * 所以这里按状态说真话。判据只有一条：**别让人以为送到了** ——
+ * 事件流里有那行 human_instruction，看着就像送到了，这是最坏的一种假。
+ */
+function instrHint(w){
+  const s = (w && w.sleep) || {};
+  if(s.sleeping) return "它正在睡 —— 留言不会叫醒它，要它现在读请点「立即唤醒」…";
+  return "给 Hallu 留言（下一轮心跳的最高优先级指令；不会因此立刻醒）…";
+}
+
+function wakeFmtSleep(w){
+  const s = (w&&w.sleep)||{};
+  if(s.sleeping){
+    const h = s.sleep_hours_this_nap||0;
+    return `睡眠中 ${h.toFixed(1)}h`;
+  }
+  return `清醒 ${(s.awake_span_hours||0).toFixed(1)}h · 欠 ${(s.debt_hours||0).toFixed(1)}h`;
+}
+
+function renderWake(w){
+  WAKE = w;
+  const pill = $("#pSleep");
+  if(!w){ pill.textContent = "唤醒策略未启用"; pill.className = "pill"; return; }
+
+  const s = w.sleep||{}, pol = w.policy||{};
+  pill.textContent = wakeFmtSleep(w);
+  pill.className = "pill " + (s.sleeping ? "sleep-on" : (s.debt_hours>0 ? "warn":"ok"));
+  pill.title = s.sleeping
+    ? `睡眠中，从 ${s.sleeping_since} 开始。定时唤醒已静默（不产生消耗）。`
+    : `滚动 24 小时已睡 ${s.slept_last_24h_hours||0}h / 要求 ${s.required_hours||0}h。`
+      + `连续清醒上限 ${s.max_awake_hours||0}h。`;
+
+  // 标题右侧那行读数：一眼看出这轮是谁叫醒的、睡眠账本通不通
+  const stats = w.stats||{}, lt = w.last_trigger||{};
+  $("#wakeMeta").textContent =
+    `兜底 ${Math.round((pol.interval_seconds||0)/60)}min · ` +
+    `价格触发 ${w.price_triggers_last_hour||0}/${pol.max_triggers_per_hour||0} 次/小时` +
+    (w.sleep_ledger_ok===false ? " · ⚠ 睡眠账本不可达" : "");
+
+  // 留言框那句话跟着睡眠状态走（见 instrHint 上面的注释）。
+  // 只在**没配唤醒模块**（w 为假）时保留 HTML 里那句静态文案。
+  const hint = instrHint(w);
+  $("#instr").placeholder = hint;
+  $("#instr").title = hint + "\n\n「立即唤醒」按钮走的是另一条路（request_wake human_manual），"
+                    + "它能穿透睡眠 —— 人有权把人拽起来。";
+
+  // 只在用户没在编辑时回填，否则打字打到一半会被覆盖
+  const af = document.activeElement;
+  const setIf = (id, val) => {
+    const el = $(id); if(!el || el === af) return;
+    if(el.type === "checkbox") el.checked = !!val; else el.value = val;
+  };
+  setIf("#wkInterval", Math.round((pol.interval_seconds||0)/60));
+  setIf("#wkCap", pol.max_triggers_per_hour);
+  setIf("#wkPoll", pol.poll_seconds);
+  setIf("#wkCooldown", pol.cooldown_seconds);
+  setIf("#wkDefaultPct", (w.human||{}).default_pct ?? "");
+  setIf("#wkDuringSleep", pol.trigger_during_sleep);
+  setIf("#wkEnabled", pol.price_trigger_enabled);
+
+  $("#wkIntervalNote").textContent =
+    (pol.agent_interval_seconds && pol.agent_interval_seconds !== pol.human_interval_seconds)
+      ? `（她已自调到 ${Math.round(pol.agent_interval_seconds/60)} 分钟）` : "";
+
+  // 规则表：人类的和 Agent 的并排看 —— 谁押了什么一眼分明
+  const rules = w.rules||[];
+  $("#wkRules").innerHTML = rules.length ? rules.map(r=>{
+    const bits = [];
+    if(r.pct) bits.push(`±${r.pct}%`);
+    if(r.above) bits.push(`≥${r.above}`);
+    if(r.below) bits.push(`≤${r.below}`);
+    return `<div class="wk-rule">
+      <span class="src ${r.source}">${r.source==="human"?"人":"自"}</span>
+      <span><b>${esc(r.symbol)}</b> ${esc(bits.join(" / "))}</span></div>`;
+  }).join("") : `<div class="empty" style="padding:4px 0">没有任何价格触发规则 —— 只剩定时兜底</div>`;
+
+  const order = ["schedule","price_human","price_agent","human_manual","sleep_max","human_instruction"];
+  const names = {schedule:"定时", price_human:"人类阈值", price_agent:"自唤醒",
+                 human_manual:"手动", sleep_max:"睡满上限", human_instruction:"留言"};
+  const total = order.reduce((a,k)=>a+(stats[k]||0),0);
+  $("#wkStats").innerHTML =
+    order.filter(k=>stats[k]).map(k=>`<span><i>${names[k]||k}</i> <b>${stats[k]}</b></span>`).join("")
+    + (total ? "" : "<span><i>还没有统计（本次启动以来）</i></span>")
+    + (lt.source ? `<span style="margin-left:auto"><i>上次 ${esc(lt.at||"")}</i> <b>${names[lt.source]||esc(lt.source)}</b></span>` : "");
+}
+
+async function saveWake(){
+  const body = {
+    interval_seconds: Math.round(Number($("#wkInterval").value) * 60),
+    max_triggers_per_hour: Number($("#wkCap").value),
+    poll_seconds: Number($("#wkPoll").value),
+    cooldown_seconds: Number($("#wkCooldown").value),
+    default_pct: $("#wkDefaultPct").value === "" ? null : Number($("#wkDefaultPct").value),
+    trigger_during_sleep: $("#wkDuringSleep").checked,
+    price_trigger_enabled: $("#wkEnabled").checked,
+  };
+  const r = await fetch("api/wake", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(body)});
+  if(!r.ok){
+    const t = await r.text();
+    alert("保存失败：" + t.slice(0,300));
+  }
+  tick();
+}
+
+$("#wkSave").onclick = saveWake;
+$("#wkSleep").onclick = async () => {
+  await fetch("api/control/sleep_toggle", {method:"POST"});
+  tick();
+};
+
+
+async function tick(){
+  try{
+    const r = await fetch("api/state", {cache:"no-store"});
+    if(!r.ok) throw new Error("state " + r.status);
+    const s = await r.json(); LAST = s;
+    render(s);
+  }catch(e){
+    $("#pStatus").textContent = "连接失败"; $("#pStatus").className = "pill err";
+  }
+}
+
+function render(s){
+  const st = s.status||{}, acc = s.account||{};
+  $("#agentName").textContent = (st.agent_name || "HalluAct") + " · Trader";
+
+  // 顶栏指示
+  const dot = $("#dot");
+  if(!st.llm_configured){ dot.className="dot err"; $("#pStatus").textContent="模型未配置"; $("#pStatus").className="pill err"; }
+  else if(st.paused){ dot.className="dot off"; $("#pStatus").textContent="已暂停"; $("#pStatus").className="pill warn"; }
+  else if(st.last_error){ dot.className="dot err"; $("#pStatus").textContent="有错误"; $("#pStatus").className="pill err"; }
+  else { dot.className="dot on"; $("#pStatus").textContent="运行中"; $("#pStatus").className="pill ok"; }
+
+  $("#btnPause").textContent = st.paused ? "恢复" : "暂停";
+  $("#pModel").textContent = st.llm_model ? ("模型 " + st.llm_model) : "未设模型";
+  
+  const tk = st.tokens_used || 0;
+  const sub = (st.subagent) || {};
+  const stk = sub.tokens_used || 0;
+  let tkTxt = "Token " + (tk >= 1000 ? (tk/1000).toFixed(1) + "k" : tk);
+  if (sub.enabled && stk > 0) tkTxt += " + 子 " + (stk >= 1000 ? (stk/1000).toFixed(1) + "k" : stk);
+  $("#pTokens").textContent = tkTxt;
+  $("#pTokens").className = "pill hide-mobile" + (tk > 500000 ? " warn" : "");
+
+  const per = st.persona || {};
+  $("#pModel").title = per.loaded ? `已加载人格：${per.file}（${per.chars} 字符）` : "默认性格";
+
+  // 叙事层指示：挂在 token 胶囊的 tooltip 上，不占顶栏空间
+  const nar = st.narrator || {};
+  if(nar.enabled){
+    const t = $("#pTokens");
+    t.title = (t.title ? t.title + " ｜ " : "") +
+      `叙事层：${nar.model}` +
+      (nar.max_tokens ? ` · 预算 ${nar.max_tokens}` : "") +
+      (nar.last_at ? ` · 上次 ${nar.last_at}` : "") +
+      (nar.character_loaded ? ` · 人物志 ${nar.character_chars} 字` : " · 未找到人物志");
+    // 配置体检的结论必须看得见 —— 叙事层坏掉不影响操盘，所以它不会以
+    // "报错"的形式出现，只会在日志里安静地烂掉。那正是要防的。
+    if(nar.advice){
+      t.title += `\n⚠ ${nar.advice.message}`;
+      t.className = "pill hide-mobile warn";
+    }
+  }
+
+  // 子代理池
+  const sub2 = st.subagent || {};
+  if(!sub2.enabled){
+    $("#subMeta").textContent = "未配置";
+    $("#subSlots").innerHTML = "";
+    $("#subPool").innerHTML = `<div class="empty">白名单为空，<code>delegate</code> 未暴露</div>`;
+  } else {
+    const maxc = sub2.max_concurrency || 3, act = sub2.active || 0;
+    const lb = st.last_beat || {};
+    $("#subMeta").textContent = `并发 ${act}/${maxc} · 取数 ${lb.fetch_calls||0} · 委派 ${lb.delegates||0}`;
+    $("#subSlots").innerHTML = Array.from({length:maxc},(_,i)=>
+      `<i class="${i<act?"on":""}" title="${i<act?"运行中":"空闲"}"></i>`).join("");
+    const tkMap = sub2.tokens_by_model || {};
+    $("#subPool").innerHTML = (sub2.models||[]).map(m=>{
+      const isDef = m.id === sub2.default_model;
+      const t = tkMap[m.id] || 0;
+      return `<div class="m ${isDef?"def":""}">
+        <div class="top">${esc(m.label||m.id)}${isDef?'<span class="tag">默认</span>':''}
+          <span style="margin-left:auto;font-weight:400;font-size:10.5px;color:var(--fg3)">${t?fmtK(t):""}</span></div>
+        ${m.use_for?`<div class="u">▸ ${esc(m.use_for)}</div>`:""}
+        ${m.avoid_for && !["无","-","none"].includes(m.avoid_for)?`<div class="a">✕ ${esc(m.avoid_for)}</div>`:""}
+      </div>`;
+    }).join("");
+  }
+
+  const mcp = st.mcp||{};
+  const okc = Object.values(mcp).filter(v=>v.connected).length;
+  $("#pMcp").textContent = `MCP ${okc}/${Object.keys(mcp).length} · 工具 ${st.tool_count||0}`;
+  $("#pMcp").className = "pill hide-mobile " + (okc===Object.keys(mcp).length && okc>0 ? "ok":"warn");
+
+  renderWake(st.wake);
+
+  // 账户
+  if(acc.error){ $("#equity").textContent="—"; }
+  else{
+    const eq = acc.equity, ret = acc.total_return_pct;
+    $("#equity").textContent = "$" + num(eq);
+    $("#retPct").textContent = (ret>0?'+':'') + num(ret,2) + "%";
+    $("#retPct").className = "pct " + (ret>0?'bgup':ret<0?'bgdown':'mut');
+    $("#cash").textContent = "$" + num(acc.cash);
+    $("#mv").textContent = "$" + num(acc.market_value);
+    $("#upnl").innerHTML = `<span class="${cls(acc.unrealized_pnl)}">${sgn(acc.unrealized_pnl)}</span>`;
+    $("#rpnl").innerHTML = `<span class="${cls(acc.realized_pnl)}">${sgn(acc.realized_pnl)}</span>`;
+    $("#fees").textContent = "$" + num(acc.fees_paid);
+    $("#daypnl").innerHTML = `<span class="${cls(acc.day_pnl_pct)}">${sgn(acc.day_pnl_pct,2)}%</span>`;
+    if(acc.WARNING){
+      $("#pStatus").textContent = "已熔断"; $("#pStatus").className="pill err";
+    }
+  }
+
+  // 持仓
+  const pos = acc.positions||[];
+  $("#posCount").textContent = pos.length;
+  $("#posBox").innerHTML = pos.length ? `<table><thead><tr>
+      <th>币种</th><th>数量</th><th>成本</th><th>现价</th><th>浮盈</th><th>止损</th></tr></thead><tbody>${
+    pos.map(p=>`<tr>
+      <td><b>${esc(p.symbol)}</b></td>
+      <td>${num(p.qty,4)}</td>
+      <td>${num(p.avg_cost,4)}</td>
+      <td>${p.mark!==undefined?num(p.mark,4):'<span class="dim">—</span>'}</td>
+      <td class="${cls(p.unrealized_pnl)}">${p.unrealized_pnl!==undefined?sgn(p.unrealized_pnl)+` (${sgn(p.unrealized_pnl_pct)}%)`:''}</td>
+      <td>${p.stop_loss?num(p.stop_loss,4):'<span class="down">未设</span>'}</td>
+    </tr>`).join("")}</tbody></table>` : `<div class="empty">当前无任何持仓 (现金防守中)</div>`;
+
+  // 绩效
+  const pf = s.performance||{};
+  $("#perfBox").innerHTML = (pf.closed_trades) ? `
+    <div><span>已平仓笔数</span><b>${pf.closed_trades}</b></div>
+    <div><span>策略胜率</span><b>${pf.win_rate_pct??'—'}%</b></div>
+    <div><span>盈亏比 (Profit Factor)</span><b>${pf.profit_factor??'—'}</b></div>
+    <div><span>平均盈利</span><b class="up">${pf.avg_win?sgn(pf.avg_win):'—'}</b></div>
+    <div><span>平均亏损</span><b class="down">${pf.avg_loss?sgn(pf.avg_loss):'—'}</b></div>
+    <div><span>最大历史回撤</span><b class="down">${pf.max_drawdown_pct??0}%</b></div>
+    <div><span>最差连续亏损</span><b>${pf.worst_losing_streak??0} 笔</b></div>`
+    : `<div><span class="dim">暂无平仓历史</span></div>`;
+
+  // 风控
+  const L = s.risk_limits||{};
+  $("#limitBox").innerHTML = `
+    <div><span>单币种仓位上限</span><b>${L.max_position_pct_of_equity??'—'}%</b></div>
+    <div><span>最大并发持仓数</span><b>${L.max_open_positions??'—'}</b></div>
+    <div><span>日亏损熔断线</span><b class="down">-${L.max_daily_loss_pct??'—'}%</b></div>
+    <div><span>单笔最小下单</span><b>$${L.min_order_notional??'—'}</b></div>
+    <div><span>往返磨损成本</span><b>${L.fee_bps_round_trip&&L.slippage_bps_per_side?((L.fee_bps_round_trip+L.slippage_bps_per_side*2)/100).toFixed(2):'0.30'}%</b></div>`;
+
+  // 曲线
+  drawCurve(s.equity_curve||[], acc.initial_cash);
+
+  // 成交
+  const tr = s.trades||[];
+  $("#tradeMeta").textContent = tr.length ? tr.length+" 笔" : "";
+  $("#tradeBox").innerHTML = tr.length ? `<table><thead><tr>
+      <th>时间</th><th>币种</th><th>方向</th><th>金额</th><th>实现盈亏</th></tr></thead><tbody>${
+    tr.map(t=>`<tr>
+      <td class="dim">${esc((t.ts||"").slice(5,16))}</td>
+      <td>${esc(t.symbol)}</td>
+      <td class="${t.side==='BUY'?'up':'down'}">${t.side==='BUY'?'买入':'卖出'}</td>
+      <td>$${num(t.notional)}</td>
+      <td class="${cls(t.realized_pnl)}">${t.side==='SELL'?sgn(t.realized_pnl):'—'}</td>
+    </tr>`).join("")}</tbody></table>` : `<div class="empty">暂无成交记录</div>`;
+
+  // 行情（数据在 loadMarket 里取，这里只重画）
+  renderMarket();
+
+  updateCountdown();
+}
+
+/* ---------------- 实时行情（左栏「资产持仓」） ----------------
+ *
+ * 数据来自 /api/market。两件事刻意分开：
+ *   · 价格读的是唤醒控制器那份 **30 秒一次的批量轮询缓存** —— 那个轮询本来就是
+ *     为价格触发在跑的，复用它等于零边际成本（`market__get_prices` 一次拿 40 个币）。
+ *   · 24h 统计没有批量工具，服务端带 120 秒缓存，而且是懒加载。
+ *
+ * 所以这里刷新得勤只影响浏览器，不多打交易所。取不到就静默跳过 ——
+ * 行情坏了不该把整页带崩，这是这个面板最该守的一条。
+ */
+let MK = null;
+/* 屏幕上的这份 MK 是"这轮刚拿到的"还是"上次打开面板时留下的"。
+   两者要能分开，否则一份旧价会被读成实时行情。 */
+let MK_LIVE = false;
+let MK_SAVED_AT = 0;      // 上次成功取价的**浏览器**时间（毫秒）
+let MK_ERR = "";          // 最近一次失败的原因；有缓存时不擦价，只在旁注写明
+
+/* 为什么要把上次的价存下来：
+   这张卡的数据要等一次网络往返才回来，而面板完全可能在一次心跳正跑着的时候
+   被打开 —— 那时 MCP 是**单任务串行**消费队列的（mcp_hub._supervisor），
+   面板那几个请求排在心跳的工具调用后面，价要十几秒才回来。
+   空着一张卡看起来像坏了，所以先拿上次的顶上去，新的到了再覆盖。
+   （后端那边也做了配合：/api/market 不再等 24h 统计。见 web.py。） */
+const MK_KEY = "dl.market.v1";
+
+function mkRestore(){
+  try{
+    const raw = localStorage.getItem(MK_KEY);
+    if(!raw) return;
+    const o = JSON.parse(raw);
+    if(o && o.payload && Array.isArray(o.payload.symbols) && o.payload.symbols.length){
+      MK = o.payload;
+      MK_SAVED_AT = o.savedAt || 0;
+      MK_LIVE = false;
+    }
+  }catch(_){ /* 无痕模式 / 配额满 / 存量脏数据：一律当成没有，不影响页面 */ }
+}
+
+function mkSave(){
+  try{ localStorage.setItem(MK_KEY, JSON.stringify({savedAt: Date.now(), payload: MK})); }
+  catch(_){ /* 同上，写不进去就算了 */ }
+}
+
+const hhmm = ms => {
+  const d = new Date(ms || Date.now());
+  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+};
+
+/* 重试节奏：手里没价的时候别让人干等 10 秒。
+   有价之后回到 10 秒 —— 刷得勤只影响浏览器，不打交易所（价读服务端缓存）。 */
+const MK_FAST_MS = 4000, MK_SLOW_MS = 10000;
+let mkTimer = null;
+
+function mkDelay(){
+  if(!MK || MK_ERR) return MK_FAST_MS;
+  // 24h 那几列是服务端**后台**补的（stale-while-revalidate），头一轮大概率空着。
+  // 空着的时候快一点取，让它早点填上。
+  if((MK.symbols || []).some(r => r.change_pct_24h === null || r.change_pct_24h === undefined))
+    return MK_FAST_MS;
+  return MK_SLOW_MS;
+}
+
+function mkSchedule(){
+  clearTimeout(mkTimer);
+  mkTimer = setTimeout(() => { loadMarket().then(mkSchedule, mkSchedule); }, mkDelay());
+}
+
+const fmtBig = v => (v===null||v===undefined||isNaN(v)) ? "—"
+  : v >= 1e9 ? (v/1e9).toFixed(2) + "B" : v >= 1e6 ? (v/1e6).toFixed(2) + "M"
+  : v >= 1e3 ? (v/1e3).toFixed(1) + "k" : String(Math.round(v));
+
+/* 币价的有效位：BTC 要两位小数就够，SOL 要三位，几毛钱的币要五位 */
+function px(v){
+  if(v===null||v===undefined||isNaN(v)) return "—";
+  const d = v >= 1000 ? 2 : (v >= 1 ? 3 : 5);
+  return Number(v).toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+
+async function loadMarket(){
+  try{
+    const r = await fetch("api/market", {cache:"no-store"});
+    if(!r.ok) throw new Error("market " + r.status);
+    const j = await r.json();
+    if(!j || !Array.isArray(j.symbols)) throw new Error("market 返回的形状不对");
+    MK = j; MK_LIVE = true; MK_SAVED_AT = Date.now(); MK_ERR = "";
+    mkSave();
+    renderMarket();
+  }catch(e){
+    /* 取不到**不擦**屏幕上已有的价：一份旧价也比一片空白强，
+       但旁注必须改成"缓存 / 刷新失败"，不能继续冒充实时。 */
+    MK_ERR = (e && e.message) ? e.message : "取价失败";
+    if(MK) MK_LIVE = false;
+    renderMarket();
+  }
+}
+
+function renderMarket(){
+  /* ★ 这三个选择器原来漏了 `#`（写成了按标签名查，而页面上没有 <mkBox> 这种标签），
+     于是 box 和 meta 都是 null，函数在第三行就 return 了 —— 一次都没画过。
+     症状：卡片永远停在初始占位文本「等待取价…」，而 /api/market 其实每次都
+     把数据正常送回来了，只是没人把它画出来。后端侧完全看不出来。
+     test_frontend.py 的 DOM 对账当时抓不到它 —— 那条正则只认带 # 的写法。
+     现在测试里加了一条专门抓这个（[3b]）。 */
+  const box = $("#mkBox"), meta = $("#mkMeta");
+  if(!box || !meta) return;
+  const m = MK;
+
+  /* 一份价都没有：这种状态必须能自己出去，不能干等。
+     （重试节奏看 mkDelay()：没数据时 4 秒一轮，有数据才回到 10 秒。） */
+  if(!m){
+    meta.textContent = MK_ERR ? "取价失败" : "正在取价…";
+    meta.className = "r stale";
+    box.innerHTML = `<div class="empty">正在取价…` +
+      (MK_ERR ? `<div class="dim" style="margin-top:5px">${esc(MK_ERR)}</div>` : "") +
+      `</div>`;
+    return;
+  }
+
+  /* 旁注只回答一个问题：屏幕上的价是刚拿到的，还是上次打开面板时留下的。
+     答不上来，一份两小时不动的价就会被当成"行情平静"。 */
+  const age = m.age_seconds, poll = m.poll_seconds || 30;
+  if(!MK_LIVE){
+    meta.textContent = "缓存 " + (MK_SAVED_AT ? hhmm(MK_SAVED_AT) : "?") +
+                       (MK_ERR ? " · 刷新失败" : " · 刷新中");
+    meta.className = "r stale";
+  }else if(age === null || age === undefined){
+    meta.textContent = "还没取到过价";
+    meta.className = "r stale";
+  }else{
+    const a = age < 90 ? Math.round(age) + "s 前" : Math.round(age/60) + " 分钟前";
+    meta.textContent = `取价 ${a} · 每 ${poll}s 一次`;
+    // 超过两个轮询周期还没更新 = 监控线程死了 / MCP 断了。标出来，
+    // 不然你会盯着一份不动的价当成"行情平静"。
+    meta.className = "r" + (age > Math.max(90, poll * 3) ? " stale" : "");
+  }
+
+  const rows = m.symbols || [];
+  if(!rows.length){ box.innerHTML = `<div class="empty">暂无可显示的币种</div>`; return; }
+
+  box.innerHTML = `<table class="mk"><thead><tr>
+      <th>币种</th><th>现价</th><th>24h</th><th>24h 区间</th><th>距参考价</th>
+    </tr></thead><tbody>` + rows.map(r => {
+    const lo = r.low_24h, hi = r.high_24h, p = r.price;
+    const pos = (lo !== null && lo !== undefined && hi !== null && hi !== undefined
+                 && p !== null && p !== undefined && hi > lo)
+      ? Math.max(0, Math.min(100, (p - lo) / (hi - lo) * 100)) : null;
+    const chg = r.change_pct_24h, dev = r.dev_from_ref_pct;
+    const tip = [
+      (hi !== null && hi !== undefined) ? `24h 高 ${num(hi, 2)}` : "",
+      (lo !== null && lo !== undefined) ? `24h 低 ${num(lo, 2)}` : "",
+      r.volume_quote ? `24h 成交额 ${fmtBig(r.volume_quote)}` : "",
+      r.ref ? `参考价 ${num(r.ref, 2)}（上一轮心跳结束时）`
+            : "还没有参考价 —— 要么还没跑过心跳，要么价格触发规则为空",
+      r.source === "24h" ? "现价来自 24h 接口兜底" : "现价来自 30 秒轮询",
+    ].filter(Boolean).join(" · ");
+    return `<tr title="${esc(tip)}">
+      <td class="sym">${esc(String(r.symbol||"").replace(/USDT$/, ""))}</td>
+      <td class="px">${px(p)}</td>
+      <td class="${cls(chg)}">${(chg === null || chg === undefined) ? "—" : sgn(chg,2)+"%"}</td>
+      <td>${pos === null ? '<span class="dim">—</span>'
+             : `<div class="rng"><i style="left:${pos.toFixed(1)}%"></i></div>`}</td>
+      <td class="${cls(dev)}">${(dev === null || dev === undefined) ? '<span class="dim">—</span>' : sgn(dev,2)+"%"}</td>
+    </tr>`;
+  }).join("") + `</tbody></table>`
+    /* 屏幕上是缓存价：表的底下补一句，别让人把一份不动的价读成行情平静。 */
+    + (MK_LIVE ? "" : `<div class="mkwarn">这是上次打开面板时取到的价（${esc(hhmm(MK_SAVED_AT))}），正在重新取…</div>`);
+}
+
+/* ---------------- 倒计时 ---------------- */
+function updateCountdown(){
+  const st = (LAST&&LAST.status)||{};
+  const secs = st.next_beat_seconds;
+  if(st.paused){ $("#pNext").textContent = "已暂停"; $("#pNext").className="pill warn"; return; }
+  if(secs===null||secs===undefined){ $("#pNext").textContent = "待命中"; $("#pNext").className="pill"; return; }
+  const m = Math.floor(secs/60), s = secs%60;
+  $("#pNext").textContent = `唤醒 ${m}:${String(s).padStart(2,'0')}`;
+  $("#pNext").className = "pill" + (secs<60?" ok":"");
+}
+setInterval(() => {
+  if(LAST && LAST.status && typeof LAST.status.next_beat_seconds === "number" && !LAST.status.paused){
+    LAST.status.next_beat_seconds = Math.max(0, LAST.status.next_beat_seconds - 1);
+  }
+  updateCountdown();
+}, 1000);
+
+/* ---------------- 曲线渲染 ---------------- */
+function drawCurve(curve, initial){
+  const svg = $("#chart"), W = svg.clientWidth || 300, H = 120, P = 8;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  if(!curve.length){ svg.innerHTML = `<text x="${W/2}" y="${H/2}" fill="#616e85" font-size="11" text-anchor="middle">暂无曲线数据</text>`; return; }
+  const vals = curve.map(c=>c.equity);
+  let lo = Math.min(...vals, initial||Infinity), hi = Math.max(...vals, initial||-Infinity);
+  if(hi-lo < 1e-9){ hi += 1; lo -= 1; }
+  const pad = (hi-lo)*0.15; lo -= pad; hi += pad;
+  const x = i => P + i*(W-2*P)/Math.max(1,curve.length-1);
+  const y = v => H-P - (v-lo)*(H-2*P)/(hi-lo);
+  const pts = curve.map((c,i)=>`${x(i).toFixed(1)},${y(c.equity).toFixed(1)}`).join(" ");
+  const last = vals[vals.length-1], first = vals[0];
+  const gain = last >= first;
+  const color = gain ? "#3fb950" : "#f43f5e";
+  let base = "";
+  if(initial){
+    const by = y(initial).toFixed(1);
+    base = `<line x1="${P}" y1="${by}" x2="${W-P}" y2="${by}" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3 3"/>
+            <text x="${W-P}" y="${by-4}" fill="#616e85" font-size="9" text-anchor="end">初始 $${num(initial)}</text>`;
+  }
+  svg.innerHTML = `
+    <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity=".32"/>
+      <stop offset="100%" stop-color="${color}" stop-opacity="0.0"/>
+    </linearGradient></defs>
+    ${base}
+    <polygon points="${P},${H-P} ${pts} ${W-P},${H-P}" fill="url(#g)"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/>
+    <circle cx="${x(curve.length-1).toFixed(1)}" cy="${y(last).toFixed(1)}" r="3" fill="${color}"/>`;
+  $("#curveMeta").textContent = `${curve.length} 点`;
+  $("#curveFrom").textContent = (curve[0].ts||"").slice(5,16);
+  $("#curveTo").textContent = (curve[curve.length-1].ts||"").slice(5,16);
+}
+
+/* ---------------- 日志流事件 ---------------- */
+/* ---------------- 工具参数的摊开 ----------------
+ *
+ * 后端存的是 `json.dumps(..., ensure_ascii=False)` 的**紧凑**形态：整份 JSON 挤在
+ * 一行里，本该换行的地方是**两个字符**的 `\n`（反斜杠 + n）。面板上直接显示，
+ * 就是几百个字连成一片 —— 2026-09-27 用户说的「tool_call 还是挤在一起」。
+ *
+ * 线上实测：47 条 tool_call 的 args 里带这种字面 `\n`。最夸张的一条是
+ * `fs_write` 的 content 把整份 markdown 文档塞了进去。
+ *
+ * 三个取舍：
+ *   · **短的照旧一行显示。** 一次心跳有几十条工具调用，全都摊开会把日志流撑长，
+ *     反而更难扫。只有放不下、或者里面有多行文本时才摊开。
+ *   · **参数被后端截断到 300 字符，所以 JSON 经常解析不了。** 解析不了也要能读：
+ *     退路是"只把转义变成真字符"，一个字都不丢。
+ *   · 摊开之后卡片会变高，所以 tool_call 也加了折叠（见上面那三条 CSS）。
+ */
+const FMT_MAX_KEYS = 12, FMT_MAX_LINES = 44, FMT_MAX_DEPTH = 3;
+
+/* 真字符的归一。数据里**真出现过** CRLF 和真 tab：pre-wrap 下一个真 tab 会按
+   tab-size 撑开八格（把行撑散），CRLF 会多留一个空行。所以这两样一律换成
+   两个空格 / 一个换行。注意它管的是**真字符**，和上面那层"字面转义"是两件事。 */
+function normWs(s){
+  return String(s).replace(/\r\n?/g, "\n").replace(/\t/g, "  ");
+}
+
+/* 转义还原：`\n` `\t` `\"` 变成真字符。
+
+   **一遍扫完**，从左到右认转义对。不能按顺序 replace 一串模式 —— 那样
+   `C:\\nope`（转义过的反斜杠 + 字母 n）会被后面那条 `\n → 换行` 的规则咬到，
+   把一个正经路径改成两行。这是**内容**不是排版，改错了看不出来：
+   2026-09-27 用真 JS 引擎喂边界用例才发现的（`{"content": "正则 /\\n/ 匹配换行"}`
+   渲染成了三行，`/` 和 `/` 被拆开）。
+
+   不认识的转义（`\x`、`\.` 这类）**连反斜杠一起留着** —— 原文更接近真相。
+   末尾那条是归一：数据里真出现过 CRLF 和真 tab，pre-wrap 下一个真 tab
+   会按 tab-size 撑开八格，缩成两个空格。 */
+function expandEsc(s){
+  return normWs(String(s).replace(/\\(u[0-9a-fA-F]{4}|.)/g, (m, c) => {
+    if(c[0] === "u"){
+      const n = parseInt(c.slice(1), 16);
+      return (n >= 0x20 && n !== 0x7f) ? String.fromCharCode(n) : "";
+    }
+    const map = {n: "\n", r: "", t: "  ", b: "", f: "", '"': '"', "\\": "\\", "/": "/"};
+    return Object.prototype.hasOwnProperty.call(map, c) ? map[c] : "\\" + c;
+  }));
+}
+
+/* 返回行数组。多行文本用**悬挂缩进**（键名底下对齐），比"值另起一块"省地方。 */
+function fmtObj(obj, pad, depth){
+  if(depth > FMT_MAX_DEPTH) return [pad + "…"];
+  const keys = Object.keys(obj || {});
+  let out = [];
+  for(const k of keys.slice(0, FMT_MAX_KEYS)){
+    const v = obj[k];
+    if(v !== null && typeof v === "object"){
+      out.push(pad + k + ":");
+      out = out.concat(fmtObj(v, pad + "  ", depth + 1));
+    }else if(typeof v === "string" && /[\n\r\t]/.test(v)){
+      /* ★ 这里只认**真**换行，**不许**再 unesc 一遍。
+         走到这个分支的值都来自 JSON.parse —— 转义在那里已经是历史了。
+         第一版还认了字面的 `\n` 并且再 expandEsc 一次，那是**二次还原**：
+         值里一个正经的 `\n`（比如它往笔记里记一条正则）会被改成换行，
+         两行之间的内容就再也对不上了。 */
+      const seg = normWs(v).split("\n");
+      out.push(pad + k + ": " + seg[0]);
+      const hang = pad + " ".repeat(k.length + 2);
+      seg.slice(1).forEach(l => out.push(hang + l));
+    }else{
+      out.push(pad + k + ": " + (v === null ? "null" : String(v)));
+    }
+  }
+  if(keys.length > FMT_MAX_KEYS) out.push(pad + "…（还有 " + (keys.length - FMT_MAX_KEYS) + " 个键）");
+  return out;
+}
+
+/* 一行放得下就一行；放不下 / 有多行文本才摊开。返回值里的换行是真的 `\n`。 */
+function fmtCallArgs(raw){
+  if(raw === null || raw === undefined || raw === "") return "";
+  const s = String(raw);
+  let obj = null;
+  try{ obj = JSON.parse(s); }catch(_){ /* 多半是被截断了，走退路 */ }
+  const isObj = obj !== null && typeof obj === "object";
+  const esc_ = /\\[nrt]/.test(s);
+  if(!esc_ && (!isObj || s.length <= 88)) return " " + s;
+
+  if(isObj){
+    const lines = fmtObj(obj, "", 1);
+    const total = lines.length;
+    const cut = total > FMT_MAX_LINES;
+    return "\n" + lines.slice(0, FMT_MAX_LINES).map(l => "   " + l).join("\n")
+         + (cut ? "\n   …（参数太长，还有 " + (total - FMT_MAX_LINES) + " 行）" : "");
+  }
+  /* 退路：JSON 是断的，一个字都不能丢 —— 只把转义变成真字符，后面几行缩进对齐。 */
+  const parts = expandEsc(s).split("\n");
+  return " " + parts[0] + parts.slice(1).map(l => "\n   " + l).join("");
+}
+
+/* ---------------- 折叠提示与"能不能点" ----------------
+ *
+ * 折叠提示只在**真的被裁掉**时才出现。CSS 自己量不了（max-height 是硬编码的，
+ * 浏览器不会告诉我们内容超了没有），所以这里量一次 scrollHeight。
+ *
+ * 以前那个提示是 .bd 的 ::after —— 它是正文的最后一个孩子，会被 overflow:hidden
+ * 一起裁掉。结果是反的：短卡片顶着"点击展开"、点开什么都没有；长卡片没提示、
+ * 没人知道能点。2026-09-27 用户报的就是前者。
+ *
+ * 量的时机很重要：**必须在元素进 DOM 之后**。所以调用点放在 renderEvent 的末尾，
+ * 不能放进拼 innerHTML 的那一段。
+ */
+const MORE_HINT = {
+  tool_result: "▸ 点击展开完整输出…",
+  tool_call: "▸ 点击展开完整参数…",
+  thinking: "▸ 点击展开思维链详情…",
+  subagent_end: "▸ 点击展开子代理报告…",
+};
+
+function markClip(el){
+  /* ★ 只对**有折叠提示那一层**的卡量。
+     窗口 resize 那条路会把 STREAM 里每一张卡都过一遍，而 `.clip` 会给正文
+     挂上 `cursor: pointer` —— 没有 .more 的卡挂上它就成了"看着能点、点了没反应"，
+     比什么都不做更让人困惑。2026-09-27 补。 */
+  if(!el.querySelector(".more")) return;
+  const bd = el.querySelector(".bd");
+  if(!bd || el.classList.contains("open")) return;   // 展开着的卡不重新量
+  // 就差一两像素不算"被裁" —— 免得为了看不出来的一行字挂个提示
+  if(bd.scrollHeight > bd.clientHeight + 2) el.classList.add("clip");
+  else el.classList.remove("clip");
+}
+
+/* 宽度一变，同样的正文就不一定还装得下（pre-wrap 是跟着容器宽走的）。
+   不重量的话，手机上会留下一批"该有提示却没有 / 不该有却挂着"的卡。 */
+let clipRz = null;
+window.addEventListener("resize", () => {
+  clearTimeout(clipRz);
+  clipRz = setTimeout(() => STREAM.forEach(markClip), 200);
+});
+
+/* 截断标记（2026-09-27 加）。
+ *
+ * 为什么它必须是**结构性的**：截断是静默事故。那天一篇手账断在
+ * 「BTC 站上 84,600 或者跌破 83,300，SOL 破 124 或」—— 事件流里看不出来，
+ * 后端当时也没记 finish_reason，是靠人肉读句子断没断才发现的。
+ * 这类东西不该靠肉眼。
+ *
+ * 只认**有证据**的三种：
+ *   ① 后端明说了 d.truncated（narrator / subagent 自己标的）
+ *   ② d.finish_reason === "length"（被 max_tokens 砍断的原始证据）
+ *   ③ 正文里写着「已截断 / 面板只留前」（tool_result / tool_call 的截断是
+ *      写进正文的，那行字是**别的组件**写的 —— 这里只是把它拎出来显眼）
+ * 三条都不中就不出声。一律挂个警告等于没有警告。
+ *
+ * ⚠️ 挂载点是 `.bd` **外面**，和 `.more` 一样 —— `.bd` 是 overflow:hidden 的
+ *    裁剪框，放里面会被一起裁掉（`.more` 当年就是这么错的）。
+ */
+const CUT_PAT = /已截断|面板只留前|只留前 \d+ 字符/;
+/* 「这句话收住了」的结尾字符。**必须和 narrator.py 的 TAIL_OK_CHARS 是同一串** ——
+   两边判据漂了就会出现"后端说截断、面板不说"（或者反过来）。
+   test_frontend.py 有一条断言直接比对这两串字面值。 */
+const CUT_TAIL_OK = '。！？…"”」』）)*';
+
+function cutNote(kind, d){
+  if(!d || typeof d !== "object") return "";
+  const say = why => `\n<div class="cut">✂ 这段被截断了（${esc(why)}）· 不是它就说这么多</div>`;
+  if(kind === "narrative"){
+    if(d.finish_reason === "length") return say("max_tokens 到顶");
+    if(d.truncated === true) return say("后端标了 truncated");
+    /* 兜底：这两个字段是 2026-09-27 才有的，**之前的事件里没有** ——
+       而它们照样可能是断的（02:57 那篇就是：断在「SOL 破 124 或」，
+       事件里干干净净，只能靠肉眼）。所以这里补一层启发式，
+       判据和后端读手账时的完全一样：结尾那个字符收不收得住。
+       它同时也兜住一种后端看不见的情况：内容被**上游网关**截断时
+       finish_reason 可能是 stop 或 null。 */
+    const t = String(d.text || "").trim();
+    if(t && !CUT_TAIL_OK.includes(t[t.length - 1])) return say("结尾不像收住的句子");
+    return "";
+  }
+  if(kind === "subagent_end" && d.truncated === true)
+    return say("结论被截，完整的已回灌给模型");
+  for(const k of ["result", "answer", "args"]){
+    if(typeof d[k] === "string" && CUT_PAT.test(d[k])) return say("正文里写着截断提示");
+  }
+  return "";
+}
+
+function matches(kind){
+  if(FILTER === "all") return true;
+  return FILTER.split(",").includes(kind);
+}
+
+function renderEvent(ev){
+  const kind = ev.kind, d = ev.data||{};
+  if(!matches(kind)) return;
+  const el = document.createElement("div");
+  el.className = "ev " + kind + (kind==="trade" && d.side==="SELL" ? " sell" : "");
+  
+  let kindLabel = kind;
+  if(kind === "human_instruction") kindLabel = "Operator 留言";
+  else if(kind === "narrative") kindLabel = "Hallu 的记录";
+  else if(kind === "agent_text") kindLabel = "Hallu 思考";
+  else if(kind === "thinking") kindLabel = "思维链";
+  else if(kind === "beat_summary") kindLabel = "本轮小结";
+  else if(kind === "subagent_end") kindLabel = "子代理报告";
+  else if(kind === "subagent_start") kindLabel = "委派子代理";
+  /* 下面这八类原来掉进 default，面板上甩的是一整行 JSON —— 里面往往只有
+     一句本来就挺人话的 reason，被引号和花括号裹着。2026-09-27 补的渲染。 */
+  else if(kind === "price_trigger") kindLabel = "价格触发";
+  else if(kind === "sleep_start") kindLabel = "去睡";
+  else if(kind === "sleep_end") kindLabel = "醒来";
+  else if(kind === "wake_request") kindLabel = "唤醒请求";
+  else if(kind === "wake_policy_changed") kindLabel = "唤醒策略变更";
+  else if(kind === "wake_refs_seeded") kindLabel = "参考价播种";
+  else if(kind === "wake_capped") kindLabel = "触发被限流";
+  else if(kind === "subagent_models_error") kindLabel = "白名单告警";
+
+  const head = `<div class="hd"><span>${esc((ev.ts||"").slice(11))}</span> · <span>${esc(kindLabel)}</span></div>`;
+  let body = "";
+  /* md = 这段正文是 mdRender 出来的块级 HTML。
+     它决定 .bd 挂不挂 .md 类 —— 挂了就关掉 pre-wrap（换行已经显式变成
+     <br> / 块标签了），不挂就靠 pre-wrap 真换行。
+     散文类正文一律走 markdown；工具调用和原始返回值不走（那是数据不是文章）。 */
+  let md = false;
+  switch(kind){
+    case "beat_start": body = `心跳 #${d.beat||"?"} 开始（${esc(d.trigger||"")}）`; break;
+    case "beat_end":   body = `心跳完成 · 耗时 ${d.duration||"?"}s · ${d.ok?"正常":"有异常"}`; break;
+    case "agent_text": body = mdRender(d.text); md = true; break;
+    case "thinking":   body = mdRender(d.text); md = true; break;
+    case "beat_summary": body = mdRender(d.text); md = true; break;
+    case "tool_call":  body = `→ <span class="nm">${esc(d.tool)}</span>` + esc(fmtCallArgs(d.args)); break;
+    case "tool_result":body = esc(d.result||""); break;
+    case "subagent_start":
+      body = `⬇ [${esc(d.job||"")}] 委派给 ${esc(d.model||"")}` +
+             (d.queued ? `（排队中，当前 ${d.active} 个运行）` : "") +
+             `\n${esc(d.task||"")}` + (d.want ? `\n预期交付：${esc(d.want)}` : ""); break;
+    case "subagent_tool":
+      body = `  ↳ [${esc(d.job||"")}] 子代理执行 <span class="nm">${esc(d.tool)}</span>` +
+             esc(fmtCallArgs(d.args)); break;
+    case "subagent_end":
+      body = mdRender(d.ok
+        ? `⬆ [${d.job||""}] ${d.model||""} 交付结论（耗时 ${d.duration}s）：\n\n${d.answer||""}`
+        : `⬆ [${d.job||""}] 子代理失败：${d.error||""}`);
+      md = true; break;
+    case "parallel_batch":
+      body = `⇉ 并发执行 ${(d.tools||[]).length} 个调用：${(d.tools||[]).map(esc).join("、")}`
+           + ((d.models && d.models.filter(Boolean).length) ? `\n   子代理模型池：${d.models.filter(Boolean).map(esc).join("、")}` : ""); break;
+    case "trade_rejected":
+      body = `✖ ${esc(d.tool)} 被风控拦截：${esc(d.reason||"")}`; break;
+    case "persona_loaded":
+      body = `已注入 Hallu 人格（${d.chars} 字符，来自 ${esc(d.source||"")}）`; break;
+    case "cost_nudge":
+      body = mdRender(d.text || `ⓘ 成本提醒已触发（本轮已自行取数 ${d.calls} 次）`); md = true; break;
+    case "trade":      body = `${d.side==="BUY"?"【买入】":"【卖出】"} ${esc(d.symbol)} · 数量 ${num(d.qty,4)} @ $${num(d.price,4)}` +
+                              ` · 金额 $${num(d.notional)} · 手续费 $${num(d.fee)}` +
+                              (d.realized_pnl ? ` · 实现盈亏 ${sgn(d.realized_pnl)}` : "") +
+                              (d.reason ? `\n理由：${esc(d.reason)}` : ""); break;
+    case "error":      body = esc(d.message); break;
+    /* 被截断的那两种，一律在末尾追一句 —— 读的人分不清"它就说这么多"和
+       "我们只留了这么多"，而这两件事的意思完全相反。 */
+    case "system":     body = esc(d.message) + (d.servers ? "\n" + esc(JSON.stringify(d.servers)) : ""); break;
+    case "human_instruction": body = mdRender(d.text); md = true; break;
+    case "sleep_start":
+      body = `🌙 去睡 · ${esc(d.reason||"")}\n` +
+             `   欠 ${num(d.debt_hours,2)}h · 24 小时内已睡 ${num(d.slept_last_24h_hours,2)}h · 这轮清醒了 ${num(d.awake_span_hours,2)}h`;
+      break;
+    case "sleep_end":
+      body = `☀️ 醒来 · ${esc(d.reason||"")}\n` +
+             `   这觉睡了 ${num(d.slept_hours,2)}h · 24 小时内累计 ${num(d.slept_last_24h_hours,2)}h` +
+             (d.debt_hours ? ` · 还欠 ${num(d.debt_hours,2)}h` : " · 配额已补平");
+      break;
+    case "price_trigger": {
+      /* 一次可能同时踩中好几条线（`hits` 全在），而 reason 只是第一条 ——
+         所以这里按 hits 逐条列，别把丢不掉的信息又丢一遍。 */
+      const hits = d.hits || [];
+      const who = d.source === "price_human" ? "人类设的线" : "它自己押的线";
+      body = `⚡ 价格触发 · ${who} · ${hits.length || 1} 条命中\n` +
+        (hits.length
+          ? hits.map(h => `   · ${esc(h.why || "")}`).join("\n")
+          : `   · ${esc(String(d.symbol||"").replace(/USDT$/,""))} 现价 ${num(d.price,2)}`);
+      break;
+    }
+    case "wake_request": {
+      const src = { human_manual: "人类在面板上叫的",
+                    price_human: "踩到人类设的价格线",
+                    price_agent: "踩到它自己押的价格线" }[d.source] || d.source || "?";
+      body = `🔔 唤醒请求 · ${esc(src)}\n   ${esc(d.reason||"")}`;
+      break;
+    }
+    case "wake_policy_changed": {
+      const p = d.policy || {};
+      const rows = Object.entries(p.thresholds || {}).map(([s, v]) => {
+        const bits = [];
+        if(v && v.pct !== undefined && v.pct !== null) bits.push(`±${v.pct}%`);
+        if(v && v.above !== undefined && v.above !== null) bits.push(`站上 ${num(v.above,0)}`);
+        if(v && v.below !== undefined && v.below !== null) bits.push(`跌破 ${num(v.below,0)}`);
+        return `${esc(s.replace(/USDT$/,""))} ${bits.join(" / ")}`;
+      });
+      body = `✎ 唤醒策略变更 · ${d.by === "agent" ? "它自己改的" : "人类改的"}` +
+             (p.interval_seconds ? `\n   兜底间隔 ${Math.round(p.interval_seconds/60)} 分钟` : "") +
+             (rows.length ? `\n   阈值：${rows.join(" · ")}` : "\n   阈值：全部清空");
+      break;
+    }
+    case "wake_refs_seeded": {
+      /* 启动时 pct 规则的参照价没法判定（refs 是空的），所以按当前价播种一次。
+         这条在面板上很值：它一出现，就说明"刚重启过，pct 阈值从这一刻起才算数"。 */
+      const pr = d.prices || {};
+      body = `🧷 参考价播种 · ${esc(d.reason||"")}\n   ` +
+             Object.entries(pr).map(([s, v]) => `${esc(s.replace(/USDT$/,""))} ${num(v,2)}`).join(" · ");
+      break;
+    }
+    case "wake_capped":
+      body = `⛔ 价格触发这一小时已经用满 ${d.used}/${d.cap} 次，这次没醒` +
+             (d.reason ? `\n   踩到的线：${esc(d.reason)}` : "");
+      break;
+    case "subagent_models_error":
+      body = `⚠ 子代理模型白名单没读成：${esc(d.error||"")}` +
+             (d.path ? `\n   文件：${esc(d.path)}` : "");
+      break;
+    case "narrative":
+      /* 署名单独一层，不要塞进 markdown 源里 —— 塞进去就得跟 <p> 抢位置，
+         而且 `——` 这种写法会渲染成正文的一部分。 */
+      body = mdRender(d.text) +
+             (d.model ? `<div class="sig">${esc(d.model)}${d.duration?` · ${d.duration}s`:""}</div>` : "");
+      md = true; break;
+    case "skipped":    body = esc(d.reason); break;
+    default: {
+      /* 兜底：以后后端加了新事件、这里忘了配，也不该甩一整行 JSON 出来
+         （上面那八类就是这么被发现的）。把对象摊成「键：值」，
+         文案仍然是转义的，值里的对象才折成 JSON。 */
+      const kv = (d && typeof d === "object")
+        ? Object.entries(d)
+            .filter(([, v]) => v !== null && v !== undefined && v !== "")
+            .map(([k, v]) => `${esc(k)}：${esc(typeof v === "object" ? JSON.stringify(v) : String(v))}`)
+        : [];
+      body = kv.length ? kv.join("\n") : esc(JSON.stringify(d));
+      break;
+    }
+  }
+  el.innerHTML = head + `<div class="bd${md ? " md" : ""}">${body}</div>` + cutNote(kind, d);
+  if(MORE_HINT[kind]){
+    el.insertAdjacentHTML("beforeend", `<div class="more">${esc(MORE_HINT[kind])}</div>`);
+    el.onclick = () => el.classList.toggle("open");
+  }
+
+  const s = $("#stream");
+  const atBottom = s.scrollHeight - s.scrollTop - s.clientHeight < 80;
+  s.appendChild(el);
+  STREAM.push(el);
+  while(STREAM.length > MAXROWS){ const old = STREAM.shift(); old.remove(); }
+  if(atBottom) s.scrollTop = s.scrollHeight;
+  /* 进 DOM 之后才量得到真实高度（游离元素上 scrollHeight 是 0）。
+     只对"可能被折"的那几类量，别让每一张卡都付一次强制重排。 */
+  if(MORE_HINT[kind]) markClip(el);
+}
+
+function connect(){
+  const es = new EventSource("api/events/stream");
+  es.onmessage = e => { try{ renderEvent(JSON.parse(e.data)); }catch(_){} };
+  es.onerror = () => { /* 浏览器内置重连机制 */ };
+}
+
+async function loadHistory(){
+  try{
+    const r = await fetch("api/events?limit=150", {cache:"no-store"});
+    const j = await r.json();
+    (j.events||[]).forEach(renderEvent);
+    const s = $("#stream"); s.scrollTop = s.scrollHeight;
+  }catch(_){}
+}
+
+/* ---------------- 交互控制 ---------------- */
+$("#btnPause").onclick = async () => {
+  const paused = LAST && LAST.status && LAST.status.paused;
+  await fetch("api/control/" + (paused ? "resume" : "pause"), {method:"POST"});
+  tick();
+};
+$("#btnWake").onclick = async () => { await fetch("api/control/wake", {method:"POST"}); tick(); };
+$("#btnSend").onclick = send;
+$("#instr").addEventListener("keydown", e => { if(e.key === "Enter") send(); });
+async function send(){
+  const v = $("#instr").value.trim(); if(!v) return;
+  $("#instr").value = "";
+  await fetch("api/instruct", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({text: v})});
+  tick();
+}
+$("#btnClear").onclick = () => { STREAM.forEach(e=>e.remove()); STREAM = []; };
+$("#filters").addEventListener("click", e => {
+  const b = e.target.closest("button[data-f]"); if(!b) return;
+  document.querySelectorAll("#filters button[data-f]").forEach(x=>x.classList.remove("act"));
+  b.classList.add("act"); FILTER = b.dataset.f || "all";
+  STREAM.forEach(e=>e.remove()); STREAM = [];
+  loadHistory();
+});
+
+/* ---------------- 工作区笔记 ---------------- */
+async function loadWorkspace(path=""){
+  const r = await fetch("api/workspace?path=" + encodeURIComponent(path), {cache:"no-store"});
+  const j = await r.json();
+  if(j.type === "dir"){
+    $("#fileBox").innerHTML = "";
+    $("#tree").innerHTML = `<div class="it" data-p="${esc(j.path?j.path.split("/").slice(0,-1).join("/").replace(/\/$/,""):"")}"><span>📁 ..</span></div>` +
+      (j.entries.length ? j.entries.map(e=>`<div class="it" data-p="${esc(path?path+"/"+e.name:e.name)}" data-d="${e.dir}">
+        <span>${e.dir?"📁":"📄"} ${esc(e.name)}</span><span class="sz">${e.dir?"":e.size+" B"}</span></div>`).join("")
+      : `<div class="empty">空目录</div>`);
+  } else if(j.type === "file"){
+    $("#fileBox").innerHTML = `<pre class="file">${esc(j.content)}</pre>`;
+  } else {
+    $("#fileBox").innerHTML = `<div class="empty">未找到</div>`;
+  }
+}
+$("#tree").addEventListener("click", e => {
+  const it = e.target.closest(".it"); if(!it) return;
+  if(it.dataset.d === "true") loadWorkspace(it.dataset.p);
+  else if(it.dataset.p && it.dataset.p !== "") loadWorkspace(it.dataset.p);
+});
+$("#btnRefreshWs").onclick = e => { e.preventDefault(); loadWorkspace(""); };
+
+$("#stream").addEventListener("scroll", e => { AUTO = e.target.scrollHeight - e.target.scrollTop - e.target.clientHeight < 80; });
+
+/* ---------------- 初始化启动 ---------------- */
+tick();
+setInterval(tick, 8000);
+/* 行情：先把上一次的价立刻画出来（0 延迟，从 localStorage 取），
+   再去拿这一轮的 —— 不然打开面板的人要对着空白卡等一次网络往返。
+   节奏交给 mkSchedule()（自适应），不用 setInterval。 */
+mkRestore();
+renderMarket();
+loadMarket().then(mkSchedule, mkSchedule);
+loadHistory().then(connect);
+loadWorkspace("");
+</script>
+</body>
+</html>

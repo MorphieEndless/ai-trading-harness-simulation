@@ -1,0 +1,139 @@
+name: ai-trader
+
+# ============================================================================
+#  AI Trading Harness — 单 Agent 模拟盘
+#  设计约束：
+#    1. 行情数据源是「只读」容器，内部无任何 API key，不存在下单代码路径
+#    2. 「下单」只发生在自建 SQLite 模拟盘里，不触达任何真实交易所
+#    3. Agent 的大脑容器没有凭证文件、没有 docker socket、非特权、根文件系统只读
+#    4. 所有风控（仓位上限/日亏熔断/手续费滑点）在模拟盘容器内强制执行，
+#       不依赖 Agent「遵守提示词」
+# ============================================================================
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  # --------------------------------------------------------------------------
+  # 行情（只读）。公共 API，无 key。物理上不可能下单。
+  # --------------------------------------------------------------------------
+  mcp-market:
+    build: ./mcp-market
+    image: ai-trader/mcp-market:latest
+    container_name: trader-mcp-market
+    <<: *hardening
+    environment:
+      MARKET_API_BASE: https://api.binance.com
+      MCP_PORT: "8081"
+      HTTP_TIMEOUT: "15"
+      PYTHONDONTWRITEBYTECODE: "1"
+    expose:
+      - "8081"
+    networks: [trader]
+    mem_limit: 192m
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+
+  # --------------------------------------------------------------------------
+  # 模拟盘（唯一能"成交"的地方）。SQLite 记账 + 风控闸门 + 止损巡视。
+  # --------------------------------------------------------------------------
+  mcp-paper:
+    build: ./mcp-paper
+    image: ai-trader/mcp-paper:latest
+    container_name: trader-mcp-paper
+    <<: *hardening
+    environment:
+      MARKET_API_BASE: https://api.binance.com
+      PAPER_DB: /data/db/trader.db
+      MCP_PORT: "8082"
+      HTTP_TIMEOUT: "15"
+      PYTHONDONTWRITEBYTECODE: "1"
+      # --- 风控参数：唯一权威来源。Agent 改不了这些。---
+      INITIAL_CASH: ${INITIAL_CASH:-10000}
+      RISK_MAX_POSITIONS: ${RISK_MAX_POSITIONS:-5}
+      RISK_MAX_POSITION_PCT: ${RISK_MAX_POSITION_PCT:-0.25}
+      RISK_MAX_DAILY_LOSS_PCT: ${RISK_MAX_DAILY_LOSS_PCT:-0.06}
+      RISK_MIN_NOTIONAL: ${RISK_MIN_NOTIONAL:-20}
+      RISK_FEE_BPS: ${RISK_FEE_BPS:-10}
+      RISK_SLIPPAGE_BPS: ${RISK_SLIPPAGE_BPS:-5}
+      # --- 睡眠配额：和上面的 RISK_* 一样是硬约束，Agent 改不到 ---
+      # 这三个数直接决定它每天最多能跑多少轮心跳，也就是成本上限。
+      SLEEP_MIN_HOURS_PER_DAY: ${SLEEP_MIN_HOURS_PER_DAY:-6.5}
+      SLEEP_MAX_SINGLE_HOURS: ${SLEEP_MAX_SINGLE_HOURS:-11}
+      SLEEP_MAX_AWAKE_HOURS: ${SLEEP_MAX_AWAKE_HOURS:-17.5}
+      STOP_WATCH_INTERVAL: "30"
+      ALLOW_RESET: ${ALLOW_RESET:-false}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - ./data/db:/data/db
+    expose:
+      - "8082"
+    networks: [trader]
+    mem_limit: 256m
+    security_opt:
+      - no-new-privileges:true
+
+  # --------------------------------------------------------------------------
+  # 大脑：心跳调度 + LLM 循环 + 文件系统 + 日志 + WebUI
+  # 根文件系统只读，只有 /data（以及 /tmp）可写 —— Agent 就算拿到 shell
+  # 也写不出去、改不动宿主。
+  # --------------------------------------------------------------------------
+  brain:
+    build: ./brain
+    image: ai-trader/brain:latest
+    container_name: trader-brain
+    <<: *hardening
+    env_file:
+      - .env
+    environment:
+      MARKET_MCP_URL: http://mcp-market:8081/mcp
+      PAPER_MCP_URL: http://mcp-paper:8082/mcp
+      DATA_DIR: /data
+      WORKSPACE_DIR: /data/workspace
+      LOG_DIR: /data/logs
+      WEB_PORT: "8000"
+      PYTHONDONTWRITEBYTECODE: "1"
+      TZ: ${TZ:-Asia/Shanghai}
+      # 子代理
+      SUBAGENT_MODELS_FILE: /app/config/subagent_models.json
+      SUBAGENT_MAX_CONCURRENCY: ${SUBAGENT_MAX_CONCURRENCY:-3}
+      SUBAGENT_MAX_PER_BEAT: ${SUBAGENT_MAX_PER_BEAT:-8}
+      # 人格（人类设定，热加载）
+      PERSONA_FILE: /app/config/persona.md
+      # 叙事层：人物志与手账的固定落点。是否启用、用哪个模型由 .env 决定。
+      NARRATOR_CHARACTER_FILE: /app/config/character.md
+      NARRATOR_JOURNAL_FILE: /data/logs/journal.md
+    volumes:
+      # 关键：只挂载工作区与日志，【不挂载 ./data/db】。
+      # 纸面账本对大脑容器不可见 —— 否则 Agent 拿到 shell 就能直接改
+      # SQLite 里的持仓和现金，绕过全部风控。
+      - ./data/workspace:/data/workspace
+      - ./data/logs:/data/logs
+      # config/ 是人类的地盘：子代理模型白名单 + 人格文件。
+      # 只读挂载 → Agent 无法改写自己的性格或偷偷加模型。
+      # 这里【不含任何密钥】：白名单只写密钥所在的「环境变量名」，
+      # 真正的 key 留在 .env（600）里注入成 brain 的进程环境变量。
+      # 所以本目录可以公开可读，而 run_shell 清空环境变量后依旧拿不到 key。
+      - ./config:/app/config:ro
+    ports:
+      # 只绑本地回环，公网只能经 nginx 进来
+      - "127.0.0.1:18080:8000"
+    networks: [trader]
+    mem_limit: 640m
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+
+networks:
+  trader:
+    driver: bridge

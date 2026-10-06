@@ -1,0 +1,33 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Data & Runtime
+data/
+logs/
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Backup & Temporary
+*.bak
+*.bak*
+*.tmp
+.tmp/
+*.swp
+*~
+.DS_Store

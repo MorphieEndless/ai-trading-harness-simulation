@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>HalluAct · 公开日志</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #090d16;
+  --panel: rgba(16, 22, 34, 0.85);
+  --card: rgba(22, 30, 46, 0.7);
+  --line: rgba(255, 255, 255, 0.08);
+  --fg: #f0f6fc;
+  --fg2: #9aa4b8;
+  --fg3: #616e85;
+  --accent: #58a6ff;
+  --up: #3fb950;
+  --down: #f43f5e;
+  --warn: #e3b341;
+  --violet: #bc8cff;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", system-ui, sans-serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: var(--bg); color: var(--fg);
+  font: 13.5px/1.55 var(--sans);
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
+
+/* ---------- 顶栏 ---------- */
+header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 16px; height: 54px;
+  background: rgba(11, 15, 25, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 700; font-size: 14.5px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg3); flex-shrink: 0; }
+.dot.on { background: var(--up); box-shadow: 0 0 10px var(--up); animation: pulse 2.2s infinite; }
+.dot.off { background: var(--warn); }
+.dot.err { background: var(--down); }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+.ro {
+  font: 600 10px/1 var(--mono); letter-spacing: .5px;
+  padding: 3px 6px; border-radius: 4px;
+  color: var(--violet); background: rgba(188,140,255,.12);
+  border: 1px solid rgba(188,140,255,.3);
+}
+.pills { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-left: auto; }
+.pills::-webkit-scrollbar { display: none; }
+.pill {
+  font: 500 11px/1.2 var(--mono); padding: 4.5px 8px; border-radius: 99px;
+  border: 1px solid var(--line); color: var(--fg2);
+  background: rgba(255,255,255,.03); white-space: nowrap;
+}
+.pill b { color: var(--fg); font-weight: 600; }
+
+/* ---------- 布局 ---------- */
+main {
+  display: grid; grid-template-columns: 330px minmax(0, 1fr);
+  gap: 12px; padding: 12px; height: calc(100% - 54px);
+}
+.col { min-width: 0; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+.side { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.card h3 {
+  margin: 0 0 8px; font: 600 11px/1 var(--mono); letter-spacing: .6px;
+  color: var(--fg3); text-transform: uppercase;
+}
+
+/* ---------- 行情 ---------- */
+.mk { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 5px 0; border-top: 1px solid rgba(255,255,255,.04); }
+.mk:first-child { border-top: 0; }
+.mk .sy { font: 600 11.5px/1.4 var(--mono); color: var(--fg2); }
+.mk .px { font: 600 13px/1.4 var(--mono); text-align: right; }
+.mk .cd { font: 500 10.5px/1.4 var(--mono); color: var(--fg3); text-align: right; grid-column: 2; }
+
+/* ---------- 账户 ---------- */
+.acct { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+.acct div { font: 500 10.5px/1.3 var(--mono); color: var(--fg3); }
+.acct b { display: block; font: 600 14px/1.4 var(--mono); color: var(--fg); margin-top: 2px; }
+.pos { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+.pos .row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; font: 500 11px/1.6 var(--mono); }
+.trades .row { display: flex; gap: 8px; font: 500 11px/1.7 var(--mono); color: var(--fg2); }
+.trades .row .t { color: var(--fg3); }
+.up { color: var(--up); } .down { color: var(--down); } .mut { color: var(--fg3); }
+.empty { color: var(--fg3); font-size: 12px; }
+
+/* ---------- 过滤器 ---------- */
+#filters { display: flex; flex-wrap: wrap; gap: 6px; }
+#filters button {
+  font: 500 11.5px/1 var(--sans); padding: 6px 10px; border-radius: 99px;
+  border: 1px solid var(--line); background: rgba(255,255,255,.03);
+  color: var(--fg2); cursor: pointer;
+}
+#filters button.act { color: var(--fg); border-color: rgba(88,166,255,.5); background: rgba(88,166,255,.12); }
+
+/* ---------- 日志流 ---------- */
+#stream { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
+.ev {
+  background: var(--card); border: 1px solid var(--line);
+  border-left: 2px solid var(--line); border-radius: 8px; padding: 7px 10px;
+}
+.ev .hd { font: 500 10.5px/1.3 var(--mono); color: var(--fg3); margin-bottom: 3px; }
+.ev .bd { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+.ev .bd.md { white-space: normal; }
+.ev.thinking { border-left-color: rgba(188,140,255,.55); }
+.ev.agent_text, .ev.beat_summary { border-left-color: rgba(88,166,255,.55); }
+.ev.narrative { border-left-color: rgba(227,179,65,.6); background: rgba(30,26,14,.5); }
+.ev.trade { border-left-color: var(--up); background: rgba(63,185,80,.07); }
+.ev.trade.sell { border-left-color: var(--down); background: rgba(244,63,94,.07); }
+.ev.error, .ev.trade_rejected { border-left-color: var(--down); }
+.ev.tool_call, .ev.tool_result, .ev.subagent_tool { font-family: var(--mono); font-size: 12px; }
+.ev .nm { color: var(--accent); font-weight: 600; }
+.ev .cut { font: 500 10.5px/1.5 var(--mono); color: var(--warn); margin-top: 4px; }
+.ev .sig { font: 500 10.5px/1.4 var(--mono); color: var(--fg3); margin-top: 5px; }
+.ev .md-h { font-weight: 700; margin: 5px 0 2px; }
+.ev .md-h1 { font-size: 15px; } .ev .md-h2 { font-size: 14px; } .ev .md-h3 { font-size: 13.5px; }
+.ev blockquote { margin: 4px 0; padding-left: 8px; border-left: 2px solid var(--line); color: var(--fg2); }
+.ev ul, .ev ol { margin: 3px 0; padding-left: 18px; }
+.ev code { font-family: var(--mono); font-size: 12px; background: rgba(255,255,255,.07); padding: 1px 4px; border-radius: 4px; }
+.ev pre.md-code {
+  margin: 4px 0; padding: 8px; overflow-x: auto; border-radius: 6px;
+  background: rgba(0,0,0,.35); border: 1px solid var(--line);
+  font: 500 11.5px/1.5 var(--mono); white-space: pre;
+}
+.ev hr.md-hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
+.ev table.md-t { border-collapse: collapse; margin: 5px 0; font-size: 12px; }
+.ev table.md-t th, .ev table.md-t td { border: 1px solid var(--line); padding: 2px 6px; text-align: left; }
+footer { padding: 8px 16px 14px; color: var(--fg3); font-size: 11.5px; }
+footer a { color: var(--accent); }
+
+@media (max-width: 860px) {
+  /* 手机上不再锁视口高度：整页自然滚动，日志就是一条普通的长列表。
+     面板那边是"分页签 + 内部滚动"，这里不跟它学 —— 公开页在手机上
+     没人会去琢磨哪个区能滑。 */
+  main { grid-template-columns: 1fr; height: auto; }
+  .col { overflow: visible; }
+  #stream { overflow: visible; max-height: none; }
+  .pills { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dot" id="dot"></span> HalluAct <span class="ro">只读</span></div>
+  <div class="pills" id="pills"></div>
+</header>
+
+<main>
+  <section class="side">
+    <div class="card">
+      <h3>实时行情</h3>
+      <div id="mkBox"><div class="empty">读取中…</div></div>
+    </div>
+    <div class="card">
+      <h3>模拟盘</h3>
+      <div id="acctBox"><div class="empty">读取中…</div></div>
+    </div>
+    <div class="card trades">
+      <h3>最近成交</h3>
+      <div id="tradeBox"><div class="empty">读取中…</div></div>
+    </div>
+  </section>
+
+  <section class="col">
+    <div id="filters">
+      <button data-f="all" class="act">全部</button>
+      <button data-f="think">思考</button>
+      <button data-f="tool">工具</button>
+      <button data-f="narr">日志</button>
+      <button data-f="trade">交易</button>
+      <button data-f="wake">睡醒</button>
+      <button data-f="other">系统</button>
+    </div>
+    <div id="stream"></div>
+  </section>
+</main>
+
+<footer>
+  这是一份<b>只读</b>的公开视图，只有日志、工具调用、行情与模拟盘读数。
+  配置、风控参数、唤醒策略、工作区笔记都在需要口令的那一侧。
+  数据源 <code>/api/public/*</code>。
+</footer>
+
+<script>
+/* ==========================================================================
+ * 公开只读页 —— brain/static/live.html
+ *
+ * 它和面板（index.html）**是两个文件**，这件事是故意的：
+ *
+ *   · 面板里有唤醒策略卡片、工作区文件浏览器、留言框、暂停/叫醒按钮，
+ *     还有一堆只有人类该看的配置读数。公开页一个都不需要。
+ *   · 两份分开，游客能看到什么就能一条一条对账（这个页面只 fetch
+ *     `api/public/` 前缀下的四个地址），而不是在两万行单文件里找 `if(游客)`。
+ *     test_frontend.py 和 test_public.py 各有一条断言直接读这个文件：
+ *     页面上出现的每一条接口路径都必须以 `api/public/` 开头。
+ *     ★ 连注释里也不许把私有端点写出来 —— 第一版这段注释就是在解释"不许出现
+ *     某某端点"，于是它**自己**把这些字符串带进了页面（2026-09-27 上线后用 grep
+ *     数路径时才发现）。断言扫的是全文，不看它在不在注释里。
+ *     同理，连"某某前缀加省略号"这种写法也不行 —— 第二版就是这么又漏了一个。
+ *
+ * 渲染器是从面板那边**裁剪**过来的同一套（esc / mdRender / fmtCallArgs /
+ * cutNote），刻意保留同名同判据 —— 尤其是 cutNote 里那串"收得住的结尾符号"，
+ * 它和 narrator.py 的 TAIL_OK_CHARS 必须一致，两份文件漂了就会出现
+ * "后端说截断、页面不说"。没有跟着搬的是 LaTeX（$..$）那一层，
+ * 公开页不渲染公式。
+ * ========================================================================== */
+
+const $ = s => document.querySelector(s);
+
+function esc(s){
+  return String(s === null || s === undefined ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function num(v, d){
+  if(v === null || v === undefined || v === "" || isNaN(v)) return "—";
+  return Number(v).toLocaleString("en-US", {minimumFractionDigits: d === undefined ? 2 : d,
+                                            maximumFractionDigits: d === undefined ? 2 : d});
+}
+function sgn(v){
+  if(v === null || v === undefined || isNaN(v)) return "—";
+  const cls = v > 0 ? "up" : (v < 0 ? "down" : "mut");
+  return `<span class="${cls}">${v > 0 ? "+" : ""}${num(v)}</span>`;
+}
+
+/* ---------------- 转义还原 / 参数摊开 ----------------
+   和面板同源：只认**真**换行，不二次还原；不认识的转义连反斜杠留着。 */
+const FMT_MAX_KEYS = 12, FMT_MAX_LINES = 44, FMT_MAX_DEPTH = 3;
+
+function normWs(s){ return String(s).replace(/\r\n?/g, "\n").replace(/\t/g, "  "); }
+
+function expandEsc(s){
+  return normWs(String(s).replace(/\\(u[0-9a-fA-F]{4}|.)/g, (m, c) => {
+    if(c[0] === "u"){
+      const n = parseInt(c.slice(1), 16);
+      return (n >= 0x20 && n !== 0x7f) ? String.fromCharCode(n) : "";
+    }
+    const map = {n: "\n", r: "", t: "  ", b: "", f: "", '"': '"', "\\": "\\", "/": "/"};
+    return Object.prototype.hasOwnProperty.call(map, c) ? map[c] : "\\" + c;
+  }));
+}
+
+function fmtObj(obj, pad, depth){
+  if(depth > FMT_MAX_DEPTH) return [pad + "…"];
+  const keys = Object.keys(obj || {});
+  let out = [];
+  for(const k of keys.slice(0, FMT_MAX_KEYS)){
+    const v = obj[k];
+    if(v !== null && typeof v === "object"){
+      out.push(pad + k + ":");
+      out = out.concat(fmtObj(v, pad + "  ", depth + 1));
+    }else if(typeof v === "string" && /[\n\r\t]/.test(v)){
+      const seg = normWs(v).split("\n");
+      out.push(pad + k + ": " + seg[0]);
+      const hang = pad + " ".repeat(k.length + 2);
+      seg.slice(1).forEach(l => out.push(hang + l));
+    }else{
+      out.push(pad + k + ": " + (v === null ? "null" : String(v)));
+    }
+  }
+  if(keys.length > FMT_MAX_KEYS) out.push(pad + "…（还有 " + (keys.length - FMT_MAX_KEYS) + " 个键）");
+  return out;
+}
+
+function fmtCallArgs(raw){
+  if(raw === null || raw === undefined || raw === "") return "";
+  const s = String(raw);
+  let obj = null;
+  try{ obj = JSON.parse(s); }catch(_){ /* 多半是被截断了，走退路 */ }
+  const isObj = obj !== null && typeof obj === "object";
+  const esc_ = /\\[nrt]/.test(s);
+  if(!esc_ && (!isObj || s.length <= 88)) return " " + s;
+  if(isObj){
+    const lines = fmtObj(obj, "", 1);
+    const cut = lines.length > FMT_MAX_LINES;
+    return "\n" + lines.slice(0, FMT_MAX_LINES).map(l => "   " + l).join("\n")
+         + (cut ? "\n   …（参数太长，还有 " + (lines.length - FMT_MAX_LINES) + " 行）" : "");
+  }
+  const parts = expandEsc(s).split("\n");
+  return " " + parts[0] + parts.slice(1).map(l => "\n   " + l).join("");
+}
+
+/* ---------------- markdown（裁剪版） ----------------
+   为什么要有：thinking / agent_text / narrative 里几乎全是 markdown，
+   不渲染的话满屏都是 `###` 和 `- **xx**`。这里只做块级结构 + 行内强调，
+   够用就行 —— 公开页的正事是"能读"，不是"渲染得跟 GitHub 一样"。 */
+function mdInline(t){
+  const codes = [];
+  let s = t.replace(/`([^`\n]+)`/g, (m, c) => { codes.push(c); return "\u0001" + (codes.length - 1) + "\u0001"; });
+  s = s.replace(/\*\*\*([^*\n]+)\*\*\*/g, "<strong><em>$1</em></strong>");
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/__([^_\n]+)__/g, "<strong>$1</strong>");
+  s = s.replace(/~~([^~\n]+)~~/g, "<del>$1</del>");
+  s = s.replace(/(^|[^*\w])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+  s = s.replace(/\u0001(\d+)\u0001/g, (m, i) => "<code>" + codes[+i] + "</code>");
+  return s;
+}
+
+function mdRender(src){
+  if(src === null || src === undefined) return "";
+  const lines = esc(src).replace(/\r\n?/g, "\n").split("\n");
+  const out = [];
+  let para = [], quote = [], list = null, table = null;
+  const isSep = l => /^[ \t]*\|?[ \t]*:?-{2,}:?[ \t]*(\|[ \t]*:?-{2,}:?[ \t]*)*\|?[ \t]*$/.test(l);
+  const cells = l => l.replace(/^[ \t]*\|/, "").replace(/\|[ \t]*$/, "").split("|").map(c => c.trim());
+  const flushPara = () => { if(para.length){ out.push("<p>" + para.map(mdInline).join("<br>") + "</p>"); para = []; } };
+  const flushQuote = () => { if(quote.length){ out.push("<blockquote>" + quote.map(mdInline).join("<br>") + "</blockquote>"); quote = []; } };
+  const flushList = () => {
+    if(!list) return;
+    const tag = list.type === "ol" ? "ol" : "ul";
+    out.push("<" + tag + ">" + list.items.map(it => "<li>" + mdInline(it) + "</li>").join("") + "</" + tag + ">");
+    list = null;
+  };
+  const flushTable = () => {
+    if(!table) return;
+    const head = table.head.map(h => "<th>" + mdInline(h) + "</th>").join("");
+    const rows = table.rows.map(r => "<tr>" + table.head.map((_, i) => "<td>" + mdInline(r[i] || "") + "</td>").join("") + "</tr>").join("");
+    out.push('<table class="md-t"><thead><tr>' + head + "</tr></thead><tbody>" + rows + "</tbody></table>");
+    table = null;
+  };
+  const flushAll = () => { flushPara(); flushQuote(); flushList(); flushTable(); };
+
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i], bare = line.trim();
+
+    if(/^```/.test(bare)){
+      flushAll();
+      const buf = [];
+      i++;
+      while(i < lines.length && !/^```/.test(lines[i].trim())){ buf.push(lines[i]); i++; }
+      out.push('<pre class="md-code">' + buf.join("\n") + "</pre>");
+      continue;
+    }
+    if(!bare){ flushAll(); continue; }
+    if(/^([-*_])\1{2,}$/.test(bare)){ flushAll(); out.push('<hr class="md-hr">'); continue; }
+
+    const h = bare.match(/^(#{1,6})\s+(.*)$/);
+    if(h){ flushAll(); out.push('<div class="md-h md-h' + h[1].length + '">' + mdInline(h[2]) + "</div>"); continue; }
+
+    if(/^&gt;\s?/.test(bare)){
+      flushPara(); flushList(); flushTable();
+      quote.push(bare.replace(/^&gt;\s?/, ""));
+      continue;
+    }
+
+    if(bare.indexOf("|") >= 0 && i + 1 < lines.length && isSep(lines[i + 1].trim())){
+      flushAll();
+      table = { head: cells(bare), rows: [] };
+      i++;
+      while(i + 1 < lines.length && lines[i + 1].trim() && lines[i + 1].indexOf("|") >= 0){
+        i++;
+        table.rows.push(cells(lines[i].trim()));
+      }
+      flushTable();
+      continue;
+    }
+
+    const li = bare.match(/^(?:([-*+])|(\d{1,3})[.)])\s+(.*)$/);
+    if(li){
+      flushPara(); flushQuote(); flushTable();
+      const type = li[1] ? "ul" : "ol";
+      if(!list || list.type !== type){ flushList(); list = { type: type, items: [] }; }
+      list.items.push(li[3]);
+      continue;
+    }
+
+    flushQuote(); flushList(); flushTable();
+    para.push(bare);
+  }
+  flushAll();
+  return out.join("");
+}
+
+/* ---------------- 截断标记 ----------------
+   `care`：cutNote 和面板那边是同一套判据。CUT_TAIL_OK 必须和
+   narrator.py 的 TAIL_OK_CHARS 是同一串，test_frontend.py 有一条断言
+   直接比对这几个字面值。 */
+const CUT_PAT = /已截断|面板只留前|只留前 \d+ 字符/;
+const CUT_TAIL_OK = '。！？…"”」』）)*';
+
+function cutNote(kind, d){
+  if(!d || typeof d !== "object") return "";
+  const say = why => `\n<div class="cut">✂ 这段被截断了（${esc(why)}）· 不是它就说这么多</div>`;
+  if(kind === "narrative"){
+    if(d.finish_reason === "length") return say("max_tokens 到顶");
+    if(d.truncated === true) return say("后端标了 truncated");
+    const t = String(d.text || "").trim();
+    if(t && !CUT_TAIL_OK.includes(t[t.length - 1])) return say("结尾不像收住的句子");
+    return "";
+  }
+  if(kind === "subagent_end" && d.truncated === true)
+    return say("结论被截，完整的已回灌给模型");
+  for(const k of ["result", "answer", "args"]){
+    if(typeof d[k] === "string" && CUT_PAT.test(d[k])) return say("正文里写着截断提示");
+  }
+  return "";
+}
+
+/* ---------------- 过滤器 ----------------
+   后端不做过滤（公开流就是那一份），分组只活在这一个地方。
+   "other" 是兜底桶：后端加了新事件、这里忘了配，它也不会凭空消失。 */
+const GROUPS = {
+  think: ["thinking", "agent_text", "beat_summary", "cost_nudge"],
+  tool: ["tool_call", "tool_result", "subagent_start", "subagent_tool", "subagent_end", "parallel_batch"],
+  narr: ["narrative", "human_instruction"],
+  trade: ["trade", "trade_rejected", "beat_start", "beat_end"],
+  wake: ["sleep_start", "sleep_end", "wake_request", "price_trigger", "wake_policy_changed", "wake_refs_seeded", "wake_capped"],
+};
+const NAMED = Object.values(GROUPS).flat();
+const MAXROWS = 400;
+let FILTER = "all", STREAM = [];
+
+function matches(kind){
+  if(FILTER === "all") return true;
+  if(FILTER === "other") return NAMED.indexOf(kind) < 0;
+  return (GROUPS[FILTER] || []).indexOf(kind) >= 0;
+}
+
+const KIND_LABEL = {
+  beat_start: "心跳开始", beat_end: "心跳结束", agent_text: "Hallu 思考",
+  thinking: "思维链", beat_summary: "本轮小结", tool_call: "工具调用",
+  tool_result: "工具返回", subagent_start: "委派子代理", subagent_tool: "子代理工具",
+  subagent_end: "子代理报告", parallel_batch: "并发调用", trade: "成交",
+  trade_rejected: "被风控拦截", persona_loaded: "人格载入", cost_nudge: "成本提醒",
+  system: "系统", human_instruction: "人类留言", sleep_start: "去睡", sleep_end: "醒来",
+  price_trigger: "价格触发", wake_request: "唤醒请求", wake_policy_changed: "唤醒策略变更",
+  wake_refs_seeded: "参考价播种", wake_capped: "触发被限流",
+  subagent_models_error: "白名单告警", narrative: "Hallu 的记录", skipped: "跳过", error: "错误",
+};
+
+function renderEvent(ev){
+  const kind = ev.kind, d = ev.data || {};
+  if(!matches(kind)) return;
+  const el = document.createElement("div");
+  el.className = "ev " + kind + (kind === "trade" && d.side === "SELL" ? " sell" : "");
+  const label = KIND_LABEL[kind] || kind;
+  const head = `<div class="hd"><span>${esc((ev.ts || "").slice(11))}</span> · <span>${esc(label)}</span></div>`;
+
+  let body = "", md = false;
+  switch(kind){
+    case "beat_start": body = `心跳 #${d.beat || "?"} 开始（${esc(d.trigger || "")}）`; break;
+    case "beat_end":   body = `心跳完成 · 耗时 ${d.duration || "?"}s · ${d.ok ? "正常" : "有异常"}`; break;
+    case "agent_text": body = mdRender(d.text); md = true; break;
+    case "thinking":   body = mdRender(d.text); md = true; break;
+    case "beat_summary": body = mdRender(d.text); md = true; break;
+    case "tool_call":  body = `→ <span class="nm">${esc(d.tool)}</span>` + esc(fmtCallArgs(d.args)); break;
+    case "tool_result":body = esc(d.result || ""); break;
+    case "subagent_start":
+      /* d.model 在公开流里被削掉了（模型白名单是配置）。所以这句话要能不带它读通 ——
+         不能写成"委派给 "后面空着。 */
+      body = `⬇ [${esc(d.job || "")}] 委派给${d.model ? " " + esc(d.model) : "子代理"}` +
+             (d.queued ? `（排队中，当前 ${d.active} 个运行）` : "") +
+             `\n${esc(d.task || "")}` + (d.want ? `\n预期交付：${esc(d.want)}` : ""); break;
+    case "subagent_tool":
+      body = `  ↳ [${esc(d.job || "")}] 子代理执行 <span class="nm">${esc(d.tool)}</span>`
+           + esc(fmtCallArgs(d.args)); break;
+    case "subagent_end":
+      body = mdRender(d.ok
+        ? `⬆ [${d.job || ""}]${d.model ? " " + d.model : ""} 交付结论（耗时 ${d.duration}s）：\n\n${d.answer || ""}`
+        : `⬆ [${d.job || ""}] 子代理失败：${d.error || ""}`);
+      md = true; break;
+    case "parallel_batch":
+      body = `⇉ 并发执行 ${(d.tools || []).length} 个调用：${(d.tools || []).map(esc).join("、")}`; break;
+    case "trade_rejected":
+      body = `✖ ${esc(d.tool)} 被风控拦截：${esc(d.reason || "")}`; break;
+    case "persona_loaded":
+      body = `已注入人格（${d.chars} 字符）`; break;
+    case "cost_nudge":
+      body = mdRender(d.text || `ⓘ 成本提醒已触发（本轮已自行取数 ${d.calls} 次）`); md = true; break;
+    case "trade":
+      body = `${d.side === "BUY" ? "【买入】" : "【卖出】"} ${esc(d.symbol)} · 数量 ${num(d.qty, 4)} @ $${num(d.price, 4)}`
+           + ` · 金额 $${num(d.notional)} · 手续费 $${num(d.fee)}`
+           + (d.realized_pnl ? ` · 实现盈亏 ${sgn(d.realized_pnl)}` : "")
+           + (d.reason ? `\n理由：${esc(d.reason)}` : ""); break;
+    case "error":      body = esc(d.message); break;
+    case "system":     body = esc(d.message); break;
+    case "human_instruction": body = mdRender(d.text); md = true; break;
+    case "sleep_start":
+      body = `🌙 去睡 · ${esc(d.reason || "")}\n` +
+             `   欠 ${num(d.debt_hours, 2)}h · 24 小时内已睡 ${num(d.slept_last_24h_hours, 2)}h · 这轮清醒了 ${num(d.awake_span_hours, 2)}h`;
+      break;
+    case "sleep_end":
+      body = `☀️ 醒来 · ${esc(d.reason || "")}\n` +
+             `   这觉睡了 ${num(d.slept_hours, 2)}h · 24 小时内累计 ${num(d.slept_last_24h_hours, 2)}h` +
+             (d.debt_hours ? ` · 还欠 ${num(d.debt_hours, 2)}h` : " · 配额已补平");
+      break;
+    case "price_trigger": {
+      const hits = d.hits || [];
+      const who = d.source === "price_human" ? "人类设的线" : "它自己押的线";
+      body = `⚡ 价格触发 · ${who} · ${hits.length || 1} 条命中\n` +
+        (hits.length
+          ? hits.map(h => `   · ${esc(h.why || "")}`).join("\n")
+          : `   · ${esc(String(d.symbol || "").replace(/USDT$/, ""))} 现价 ${num(d.price, 2)}`);
+      break;
+    }
+    case "wake_request": {
+      const src = {human_manual: "人类在面板上叫的",
+                   price_human: "踩到人类设的价格线",
+                   price_agent: "踩到它自己押的价格线"}[d.source] || d.source || "?";
+      body = `🔔 唤醒请求 · ${esc(src)}\n   ${esc(d.reason || "")}`;
+      break;
+    }
+    /* 策略变更只留"谁改的"。具体阈值/间隔是配置，公开流里被后端抹掉了
+       （web.py 的 PUBLIC_STRIP）—— 这里不许再想办法把它拼回来。 */
+    case "wake_policy_changed":
+      body = `✎ 唤醒策略变更 · ${d.by === "agent" ? "它自己改的" : "人类改的"}`; break;
+    case "wake_refs_seeded": {
+      const pr = d.prices || {};
+      body = `🧷 参考价播种 · ${esc(d.reason || "")}\n   ` +
+             Object.entries(pr).map(([s, v]) => `${esc(s.replace(/USDT$/, ""))} ${num(v, 2)}`).join(" · ");
+      break;
+    }
+    case "wake_capped":
+      body = `⛔ 价格触发这一小时已经用满，这次没醒` + (d.reason ? `\n   踩到的线：${esc(d.reason)}` : ""); break;
+    case "subagent_models_error":
+      body = `⚠ 子代理模型白名单没读成：${esc(d.error || "")}`; break;
+    case "narrative":
+      body = mdRender(d.text) +
+             (d.duration ? `<div class="sig">${d.duration}s</div>` : "");
+      md = true; break;
+    case "skipped":    body = esc(d.reason); break;
+    default: {
+      const kv = (d && typeof d === "object")
+        ? Object.entries(d)
+            .filter(([, v]) => v !== null && v !== undefined && v !== "")
+            .map(([k, v]) => `${esc(k)}：${esc(typeof v === "object" ? JSON.stringify(v) : String(v))}`)
+        : [];
+      body = kv.length ? kv.join("\n") : esc(JSON.stringify(d));
+      break;
+    }
+  }
+  el.innerHTML = head + `<div class="bd${md ? " md" : ""}">${body}</div>` + cutNote(kind, d);
+  const s = $("#stream");
+  const atBottom = s.scrollHeight - s.scrollTop - s.clientHeight < 80;
+  s.appendChild(el);
+  /* 自己留一份节点清单来封顶，而不是读 s.children —— 面板那边也是这么做的。
+     两个理由：一是公开页可能被一个人挂一整天，第二是**读 DOM 的 children
+     这件事在测试的桩里不存在**（桩没有 children 属性，一读就 TypeError，
+     于是"页面正常"和"测试跑不了"分不清）。 */
+  STREAM.push(el);
+  while(STREAM.length > MAXROWS){
+    const old = STREAM.shift();
+    if(old && old.remove) old.remove();
+  }
+  if(atBottom) s.scrollTop = s.scrollHeight;
+}
+
+/* ---------------- 连接 ---------------- */
+let SLEEPING = false, PAUSED = false, BEATS = null, LAST_TS = null, CONN = "off";
+
+function connect(){
+  const es = new EventSource("api/public/events/stream");
+  es.onopen = () => { CONN = "on"; paintPills(); };
+  es.onmessage = e => { try{ const ev = JSON.parse(e.data); note(ev); renderEvent(ev); }catch(_){} };
+  es.onerror = () => { CONN = "err"; paintPills(); };   // 浏览器自己会重连
+}
+
+function note(ev){
+  LAST_TS = ev.ts || LAST_TS;
+  const d = ev.data || {};
+  if(ev.kind === "sleep_start") SLEEPING = true;
+  else if(ev.kind === "sleep_end") SLEEPING = false;
+  else if(ev.kind === "beat_start") BEATS = d.beat;
+  else if(ev.kind === "beat_end" && d.beat) BEATS = d.beat;
+  paintPills();
+}
+
+function paintPills(){
+  const bits = [];
+  bits.push(SLEEPING
+    ? `<span class="pill" style="color:var(--violet)">🌙 睡眠中</span>`
+    : `<span class="pill" style="color:var(--up)">☀️ 清醒</span>`);
+  if(PAUSED) bits.push(`<span class="pill" style="color:var(--warn)">⏸ 人类已暂停</span>`);
+  if(BEATS) bits.push(`<span class="pill">心跳 <b>#${BEATS}</b></span>`);
+  if(LAST_TS) bits.push(`<span class="pill">最近事件 <b>${esc(LAST_TS.slice(11))}</b></span>`);
+  bits.push(CONN === "on"
+    ? `<span class="pill" style="color:var(--up)">● 已连接</span>`
+    : (CONN === "err" ? `<span class="pill" style="color:var(--down)">● 重连中</span>`
+                      : `<span class="pill">● 连接中</span>`));
+  $("#pills").innerHTML = bits.join("");
+  $("#dot").className = "dot " + (CONN === "on" ? "on" : (CONN === "err" ? "err" : "off"));
+}
+
+async function loadHistory(){
+  try{
+    const r = await fetch("api/public/events?limit=150", {cache: "no-store"});
+    const j = await r.json();
+    (j.events || []).forEach(ev => { note(ev); renderEvent(ev); });
+    const s = $("#stream"); s.scrollTop = s.scrollHeight;
+  }catch(_){}
+}
+
+/* ---------------- 行情 / 账户 ---------------- */
+function renderMarket(j){
+  const rows = j.symbols || [];
+  if(!rows.length){ $("#mkBox").innerHTML = `<div class="empty">暂时取不到行情</div>`; return; }
+  $("#mkBox").innerHTML = rows.map(r => {
+    const chg = r.change_pct_24h;
+    const cls = (chg === null || chg === undefined) ? "mut" : (chg >= 0 ? "up" : "down");
+    return `<div class="mk">
+      <span class="sy">${esc(String(r.symbol || "").replace(/USDT$/, ""))}</span>
+      <span class="px">${r.price === null || r.price === undefined ? "—" : "$" + num(r.price, 2)}</span>
+      <span class="cd ${cls}">${chg === null || chg === undefined ? "24h —"
+        : (chg >= 0 ? "+" : "") + num(chg, 2) + "%"}</span>
+    </div>`;
+  }).join("");
+}
+
+function renderState(j){
+  const a = j.account || {}, st = j.status || {};
+  PAUSED = !!st.paused;
+  const eq = a.equity, ret = a.total_return_pct;
+  $("#acctBox").innerHTML =
+    `<div class="acct">
+       <div>总权益<b>$${num(eq)}</b></div>
+       <div>总收益<b>${sgn(ret)}%</b></div>
+       <div>现金<b>$${num(a.cash)}</b></div>
+       <div>浮动盈亏<b>${sgn(a.unrealized_pnl)}</b></div>
+       <div>已实现<b>${sgn(a.realized_pnl)}</b></div>
+       <div>手续费<b>$${num(a.fees_paid)}</b></div>
+     </div>` +
+    ((a.positions && a.positions.length)
+      ? `<div class="pos">` + a.positions.map(p =>
+          `<div class="row"><span>${esc(String(p.symbol || "").replace(/USDT$/, ""))}</span>
+             <span class="mut">${num(p.qty, 4)} @ ${num(p.avg_cost, 2)}</span>
+             <span>${sgn(p.unrealized_pnl)}</span></div>`).join("") + `</div>`
+      : `<div class="pos"><div class="empty">当前无持仓</div></div>`);
+
+  const tr = j.trades || [];
+  $("#tradeBox").innerHTML = tr.length
+    ? tr.slice(0, 12).map(t =>
+        `<div class="row"><span class="t">${esc(String(t.ts || "").slice(5, 16))}</span>
+           <span class="${t.side === "BUY" ? "up" : "down"}">${t.side === "BUY" ? "买" : "卖"}</span>
+           <span>${esc(String(t.symbol || "").replace(/USDT$/, ""))}</span>
+           <span>${num(t.qty, 4)} @ ${num(t.price, 2)}</span></div>`).join("")
+    : `<div class="empty">至今零成交</div>`;
+}
+
+async function loadMarket(){
+  try{
+    const r = await fetch("api/public/market", {cache: "no-store"});
+    renderMarket(await r.json());
+  }catch(_){}
+}
+
+async function loadState(){
+  try{
+    const r = await fetch("api/public/state", {cache: "no-store"});
+    renderState(await r.json());
+  }catch(_){}
+}
+
+/* ---------------- 交互 ---------------- */
+$("#filters").addEventListener("click", e => {
+  const b = e.target.closest("button[data-f]");
+  if(!b) return;
+  document.querySelectorAll("#filters button[data-f]").forEach(x => x.classList.remove("act"));
+  b.classList.add("act");
+  FILTER = b.dataset.f || "all";
+  STREAM.forEach(el => { if(el.remove) el.remove(); });
+  STREAM = [];
+  loadHistory();
+});
+
+paintPills();
+loadHistory().then(connect);
+loadMarket();
+loadState();
+setInterval(loadMarket, 15000);
+setInterval(loadState, 20000);
+</script>
+</body>
+</html>

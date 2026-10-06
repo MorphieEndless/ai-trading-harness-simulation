@@ -1,0 +1,37 @@
+{
+  "_readme": [
+    "人类那侧的唤醒策略种子。这个文件在仓库里，是版本可控的默认值。",
+    "",
+    "运行时的真实值在 /data/logs/wake_policy.json（面板写入，首次由本文件初始化）。",
+    "改面板是首选方式；改这个文件需要重启 brain 才会重新播种。",
+    "",
+    "字段：",
+    "  interval_seconds        定时兜底的间隔（秒）。语义是「最长沉默」：",
+    "                          距上次任何唤醒超过这么久就必定醒一次。",
+    "                          Agent 只能把它改得更短，不能更长。",
+    "  default_pct             没单独配的币，用这个波动百分比（相对上次看盘价）。",
+    "  thresholds              逐币规则。pct=波动百分比；above/below=价格线。",
+    "                          human.* 只有这份文件（和面板）能改，Agent 改不了；",
+    "                          Agent 自己那份在工作区里，它爱怎么写怎么写。",
+    "  price_trigger_enabled   总开关。关掉后只剩定时兜底。",
+    "  trigger_during_sleep    睡眠期间人类阈值要不要把人叫醒。",
+    "                          Agent 自唤醒不受这个开关影响 —— 那是它自己押的注。",
+    "  max_triggers_per_hour   价格触发的每小时上限。★ 这条是防「行情疯起来就疯狂醒」，",
+    "                          没有它，最贵的时候恰好是行情最剧烈的时候。",
+    "  poll_seconds            后台取价间隔。不花 token（不经过 LLM）。",
+    "  cooldown_seconds        两次价格触发之间的最短间隔。"
+  ],
+  "interval_seconds": 5400,
+  "price_trigger_enabled": true,
+  "trigger_during_sleep": true,
+  "max_triggers_per_hour": 10,
+  "poll_seconds": 30,
+  "cooldown_seconds": 300,
+  "default_pct": 1.5,
+  "thresholds": {
+    "BTCUSDT": { "pct": 1.0 },
+    "ETHUSDT": { "pct": 1.2 },
+    "SOLUSDT": { "pct": 1.8 },
+    "BNBUSDT": { "pct": 1.5 }
+  }
+}

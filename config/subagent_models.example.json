@@ -1,0 +1,65 @@
+{
+  "_readme": [
+    "子代理模型白名单 —— 人类维护，主 Agent 只能从这里挑，挑不到别处。",
+    "",
+    "★ 这个文件里【不要写密钥】。它只写密钥所在的【环境变量名】。",
+    "  真正的 key 放在 .env（600 权限）里，由 compose 注入成 brain 的进程环境变量。",
+    "  这样即使 Agent 拿到 shell（run_shell 会清空环境变量），也读不到任何 key。",
+    "",
+    "字段说明：",
+    "  id           主 Agent 在 delegate(model=...) 里填的值（唯一标识，建议用模型名）",
+    "  label        显示用名称",
+    "  base_url     OpenAI 兼容端点，要带 /v1。留空则继承 LLM_BASE_URL",
+    "  api_key_env  密钥所在的环境变量名。留空则依次回落到",
+    "               SUBAGENT_API_KEY、LLM_API_KEY（同端点时可直接复用主 key）",
+    "  max_tokens   该模型单次回复的 token 上限；思考型模型要留足",
+    "  use_for      这个模型擅长什么 —— 会写进工具描述，主 Agent 据此选择",
+    "  avoid_for    不擅长什么 —— 同上，帮主 Agent 避开误用",
+    "",
+    "⛔ 选模型时注意：deepseek-v4.1-flash 不许接文字类的活儿（见它的 avoid_for）。",
+    "改完立即生效，不用重启（每次委派都会重新读取本文件）。",
+    "用 set-subagent.sh 管理：--list / --add / --remove / --default / --interim / --off"
+  ],
+  "default": "glm-5.3-fast",
+  "models": [
+    {
+      "id": "glm-5.3-fast",
+      "label": "GLM 5.3 Fast",
+      "base_url": "",
+      "api_key_env": "",
+      "max_tokens": 8192,
+      "use_for": "最快最省的批量活儿。扫描多个标的做排名、把长数据序列读成一句结论、简单的数值汇总。",
+      "avoid_for": "需要权衡矛盾证据的多步推理；长链条的因果分析。"
+    },
+    {
+      "id": "qwen3.8-27b",
+      "label": "Qwen 3.8 27B",
+      "base_url": "",
+      "api_key_env": "",
+      "max_tokens": 8192,
+      "use_for": "中文语境下的新闻与情绪面梳理、把搜索返回的杂乱文本归纳成要点。",
+      "avoid_for": "高精度数值计算；对小数位敏感的技术指标比对。"
+    },
+    {
+      "id": "deepseek-v4.1-flash",
+      "label": "DeepSeek V4.1 Flash",
+      "base_url": "",
+      "api_key_env": "",
+      "max_tokens": 8192,
+      "use_for": "带推理的中间结论（**只做结构化提取与判断，不做文字表达**）。多指标交叉验证、判断形态是否成立、发现任务前提本身有问题。",
+      "avoid_for": "⛔ 不许用于任何文字类产出：文笔很差、文科很差。写总结 / 角色日记 / 叙事 / 复盘叙述 一概别交给它（对比过，写出来是「合规报告」那个味道）。当工具用没问题，当笔用不行。"
+    },
+    {
+      "_comment": "换成别的端点（例如 MiniMax）时：在 .env 里加一行",
+      "_comment2": "  SUBAGENT_API_KEY_MINIMAX=你的key",
+      "_comment3": "然后把下面这条的 api_key_env 填成 SUBAGENT_API_KEY_MINIMAX，并重启 brain。",
+      "id": "EXAMPLE-换端点写法",
+      "label": "示例：独立端点的模型",
+      "base_url": "https://api.example.com/v1",
+      "api_key_env": "SUBAGENT_API_KEY_MINIMAX",
+      "max_tokens": 8192,
+      "use_for": "（示例条目，复制上面的结构改成你要的模型，或直接删掉这条）",
+      "avoid_for": ""
+    }
+  ]
+}
