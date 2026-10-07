@@ -3,7 +3,7 @@
 单 Agent、容器化的加密资产**模拟盘**交易系统。
 行情是真的，成交价按真实盘口撮合，但账户里的钱是虚拟的——不可能亏掉真人一分钱。
 
-部署位置：`YOUR_SERVER_IP`（香港） · 面板：`https://trader.example.com/`
+部署位置：`YOUR_SERVER_IP` · 面板：`https://trader.example.com/`
 
 > 本系统为单 Agent 容器化模拟盘交易环境。生产部署前请确保完成 `.env` 与模型策略配置。
 
